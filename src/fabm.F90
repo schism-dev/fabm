@@ -1372,21 +1372,19 @@
    type (type_bulk_variable_id) :: id
 !
 ! !LOCAL VARIABLES:
-   type (type_link), pointer :: link
+   type (type_link),             pointer :: link
+   type (type_internal_variable),pointer :: object
 !
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   link => self%links_all%first
-   do while (associated(link))
-      if (link%target%domain==domain_interior) then
-         if (link%name==name.or.get_safe_name(link%name)==name) then
-            id = create_external_interior_id(link%target)
-            return
-         end if
+   object => self%root%find_object(name,exact=.false.)
+   if (associated(object)) then
+      if (object%domain==domain_interior) then
+         id = create_external_interior_id(object)
+         return
       end if
-      link => link%next
-   end do
+   end if
 
    ! Name not found among variable names. Now try standard names that are in use.
    link => self%links_all%first
@@ -1452,21 +1450,19 @@
    type (type_horizontal_variable_id) :: id
 !
 ! !LOCAL VARIABLES:
-   type (type_link), pointer :: link
+   type (type_link),             pointer :: link
+   type (type_internal_variable),pointer :: object
 !
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   link => self%links_all%first
-   do while (associated(link))
-      if (link%target%domain==domain_horizontal.or.link%target%domain==domain_surface.or.link%target%domain==domain_bottom) then
-         if (link%name==name.or.get_safe_name(link%name)==name) then
-            id = create_external_horizontal_id(link%target)
-            return
-         end if
+   object => self%root%find_object(name,exact=.false.)
+   if (associated(object)) then
+      if (iand(object%domain,domain_horizontal)/=0) then
+         id = create_external_horizontal_id(object)
+         return
       end if
-      link => link%next
-   end do
+   end if
 
    ! Name not found among variable names. Now try standard names that are in use.
    link => self%links_all%first
@@ -1534,21 +1530,19 @@
    type (type_scalar_variable_id) :: id
 !
 ! !LOCAL VARIABLES:
-   type (type_link), pointer :: link
+   type (type_link),             pointer :: link
+   type (type_internal_variable),pointer :: object
 !
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   link => self%links_all%first
-   do while (associated(link))
-      if (link%target%domain==domain_scalar) then
-         if (link%name==name.or.get_safe_name(link%name)==name) then
-            id = create_external_scalar_id(link%target)
-            return
-         end if
+   object => self%root%find_object(name,exact=.false.)
+   if (associated(object)) then
+      if (object%domain==domain_scalar) then
+         id = create_external_scalar_id(object)
+         return
       end if
-      link => link%next
-   end do
+   end if
 
    ! Name not found among variable names. Now try standard names that are in use.
    link => self%links_all%first
@@ -4853,38 +4847,74 @@ subroutine classify_variables(self)
       link => link%next
    end do
 
-   ! Create lists of variables that may be provided by the host model.
-   ! These lists include external dependencies, as well as the model's own state variables,
-   ! which may be overridden by the host.
-   link => self%links_all%first
-   do while (associated(link))
-      object =>link%target
-      if (.not.object%read_indices%is_empty().and. &
-          .not.(object%presence==presence_external_optional.and..not.object%state_indices%is_empty())) then
-         select case (object%domain)
-            case (domain_interior);                                call dependencies%add(link%name)
-            case (domain_horizontal,domain_surface,domain_bottom); call dependencies_hz%add(link%name)
-            case (domain_scalar);                                  call dependencies_scalar%add(link%name)
-         end select
+   call collect_read_variables(self%root, domain_interior,   '', dependencies)
+   call collect_read_variables(self%root, domain_horizontal, '', dependencies_hz)
+   call collect_read_variables(self%root, domain_scalar,     '', dependencies_scalar)
+   call dependencies%to_array(self%dependencies)
+   call dependencies_hz%to_array(self%dependencies_hz)
+   call dependencies_scalar%to_array(self%dependencies_scalar)
 
-         standard_variables_node => object%standard_variables%first
+end subroutine classify_variables
+
+recursive subroutine collect_read_variables(self, domain, prefix, target_set)
+   class (type_base_model), intent(in)    :: self
+   integer,                 intent(in)    :: domain
+   character(len=*),        intent(in)    :: prefix
+   class (type_set),        intent(inout) :: target_set
+
+   type (type_link),           pointer :: link
+   type (type_set_element),    pointer :: element
+   type (type_model_list_node),pointer :: node
+
+   link => self%links%first
+   do while (associated(link))
+      if (iand(link%target%domain,domain)/=0.and..not.link%target%read_indices%is_empty().and. &
+          .not.(link%target%presence==presence_external_optional.and..not.link%target%state_indices%is_empty())) then
+         allocate(element)
+         element%string = prefix//trim(link%name)
+         element%next => target_set%first
+         target_set%first => element
+      end if
+      link => link%next
+   end do
+
+   if (.not.associated(self%parent)) call collect_read_standard_variables(self, domain, target_set)
+
+   node => self%children%first
+   do while (associated(node))
+      call collect_read_variables(node%model, domain, prefix//trim(node%model%name)//'/', target_set)
+      node => node%next
+   end do
+end subroutine collect_read_variables
+
+recursive subroutine collect_read_standard_variables(self, domain, target_set)
+   class (type_base_model), intent(in)    :: self
+   integer,                 intent(in)    :: domain
+   class (type_set),        intent(inout) :: target_set
+
+   type (type_link),                   pointer :: link
+   type (type_standard_variable_node), pointer :: standard_variables_node
+   type (type_model_list_node),        pointer :: node
+
+   link => self%links%first
+   do while (associated(link))
+      if (iand(link%target%domain,domain)/=0.and..not.link%target%read_indices%is_empty().and. &
+          .not.(link%target%presence==presence_external_optional.and..not.link%target%state_indices%is_empty())) then
+         standard_variables_node => link%target%standard_variables%first
          do while (associated(standard_variables_node))
-            if (standard_variables_node%p%name/='') then
-               select case (object%domain)
-                  case (domain_interior);                                call dependencies%add(standard_variables_node%p%name)
-                  case (domain_horizontal,domain_surface,domain_bottom); call dependencies_hz%add(standard_variables_node%p%name)
-                  case (domain_scalar);                                  call dependencies_scalar%add(standard_variables_node%p%name)
-               end select
-            end if
+            if (standard_variables_node%p%name/='') call target_set%add(standard_variables_node%p%name)
             standard_variables_node => standard_variables_node%next
          end do
       end if
       link => link%next
    end do
-   call dependencies%to_array(self%dependencies)
-   call dependencies_hz%to_array(self%dependencies_hz)
-   call dependencies_scalar%to_array(self%dependencies_scalar)
-end subroutine classify_variables
+
+   node => self%children%first
+   do while (associated(node))
+      call collect_read_standard_variables(node%model, domain, target_set)
+      node => node%next
+   end do
+end subroutine collect_read_standard_variables
 
 subroutine copy_variable_metadata(internal_variable,external_variable)
    class (type_external_variable),intent(inout) :: external_variable
