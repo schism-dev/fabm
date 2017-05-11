@@ -295,7 +295,6 @@ end subroutine
       class (type_coupling_task),   pointer :: coupling, next_coupling
       type (type_internal_variable),pointer :: master
       type (type_link),             pointer :: link
-      type (type_link_list)                 :: all_links
 !
 !-----------------------------------------------------------------------
 !BOC
