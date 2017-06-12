@@ -43,3 +43,6 @@ for variable in model.conserved_quantities:
 print 'Dependencies:'
 for variable in model.dependencies:
    print '  %s = %s (%s)' % (variable.name,variable.long_name,variable.units)
+
+print 'Model tree:'
+model.root.printTree()

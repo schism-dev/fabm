@@ -23,6 +23,7 @@
    use fabm_properties
    use fabm_python_helper
    use fabm_c_helper
+   use fabm_c_model
 
    implicit none
 !
@@ -41,8 +42,6 @@
    integer :: index_column_depth
    real(c_double),pointer :: column_depth
    type (type_link_list),save :: coupling_link_list
-
-   type (type_property_dictionary),save,private :: forced_parameters,forced_couplings
 
    type,extends(type_base_driver) :: type_python_driver
    contains
@@ -93,31 +92,10 @@
       ! If the model object already exists, delete it to start from scratch.
       if (associated(model)) call finalize()
 
-      ! Remove any existing user-specified parameter values and couplings.
-      ! (If the user wanted to preserve those, he would have called reinitialize)
-      call forced_parameters%finalize()
-      call forced_couplings%finalize()
-
       ! Build FABM model tree (configuration will be read from file specified as argument).
       allocate(model)
       call c_f_pointer(c_loc(path), ppath)
-      call fabm_create_model_from_yaml_file(model,path=ppath(:index(ppath,C_NULL_CHAR)-1),parameters=forced_parameters)
-
-      ! Get a list of all parameters that had an explicit value specified.
-      property => model%root%parameters%first
-      do while (associated(property))
-         if (.not.model%root%parameters%missing%contains(property%name)) &
-            call forced_parameters%set_property(property)
-         property => property%next
-      end do
-
-      ! Get a list of all active couplings.
-      property => model%root%couplings%first
-      do while (associated(property))
-         if (.not.model%root%couplings%missing%contains(property%name)) &
-            call forced_couplings%set_property(property)
-         property => property%next
-      end do
+      call fabm_create_model_from_yaml_file(model,path=ppath(:index(ppath,C_NULL_CHAR)-1))
 
       ! Send information on spatial domain to FABM (this also allocates memory for diagnostics)
       call fabm_set_domain(model)
@@ -130,7 +108,23 @@
    end subroutine initialize
 !EOC
 
-   subroutine reinitialize()
+   function variable_get_suitable_masters(pvariable) result(plist) bind(c)
+      !DIR$ ATTRIBUTES DLLEXPORT :: variable_get_suitable_masters
+      type (c_ptr), intent(in), value :: pvariable
+      type (c_ptr)                    :: plist
+
+      type (type_internal_variable),pointer :: variable
+      type (type_link_list),        pointer :: list
+
+      call c_f_pointer(pvariable, variable)
+      list => get_suitable_masters(model,variable)
+      plist = c_loc(list)
+   end function variable_get_suitable_masters
+
+   subroutine reinitialize(name, value)
+      character(len=*),      intent(in)           :: name
+      class (type_property), intent(in), optional :: value
+
       type (type_model),           pointer :: newmodel
       type (type_model_list_node), pointer :: node
       class (type_base_model),     pointer :: childmodel
@@ -139,9 +133,15 @@
       ! Create new model object.
       allocate(newmodel)
 
-      ! Transfer forced parameters to root of the model.
-      call newmodel%root%parameters%update(forced_parameters)
-      call newmodel%root%couplings%update(forced_couplings)
+      ! Transfer previous parameters to root of the model.
+      call newmodel%root%parameters%update(model%root%parameters, minimum_source=property_source_user)
+      call newmodel%root%couplings%update(model%root%couplings, minimum_source=property_source_user)
+
+      if (.not.present(value)) then
+         call newmodel%root%parameters%delete(name)
+      else
+         call newmodel%root%parameters%set(name, value)
+      end if
 
       ! Re-create original models
       node => model%root%children%first
@@ -162,16 +162,16 @@
       call fabm_initialize(model)
 
       ! Removed unused forced parameters from root model.
-      property => model%root%parameters%first
-      do while (associated(property))
-         if (.not. model%root%parameters%retrieved%contains(property%name)) then
-            next => property%next
-            call model%root%parameters%delete(property%name)
-            property => next
-         else
-            property => property%next
-         end if
-      end do
+      !property => model%root%parameters%first
+      !do while (associated(property))
+      !   if (.not. model%root%parameters%retrieved%contains(property%name)) then
+      !      next => property%next
+      !      call model%root%parameters%delete(property%name)
+      !      property => next
+      !   else
+      !      property => property%next
+      !   end if
+      !end do
 
       ! Send information on spatial domain to FABM (this also allocates memory for diagnostics)
       call fabm_set_domain(model)
@@ -188,25 +188,12 @@
       call fabm_check_ready(model)
    end subroutine check_ready
 
-   integer(c_int) function model_count() bind(c)
-      !DIR$ ATTRIBUTES DLLEXPORT :: model_count
-
-      type (type_model_list_node), pointer :: node
-
-      model_count = 0
-      node => model%root%children%first
-      do while (associated(node))
-         model_count = model_count + 1
-         node => node%next
-      end do
-   end function model_count
-
    subroutine get_counts(nstate_interior,nstate_surface,nstate_bottom,ndiagnostic_interior,ndiagnostic_horizontal,nconserved, &
-      ndependencies,nparameters,ncouplings) bind(c)
+      ndependencies) bind(c)
       !DIR$ ATTRIBUTES DLLEXPORT :: get_counts
       integer(c_int),intent(out) :: nstate_interior,nstate_surface,nstate_bottom
       integer(c_int),intent(out) :: ndiagnostic_interior,ndiagnostic_horizontal
-      integer(c_int),intent(out) :: nconserved,ndependencies,nparameters,ncouplings
+      integer(c_int),intent(out) :: nconserved,ndependencies
       nstate_interior = size(model%state_variables)
       nstate_surface = size(model%surface_state_variables)
       nstate_bottom = size(model%bottom_state_variables)
@@ -214,9 +201,18 @@
       ndiagnostic_horizontal = size(model%horizontal_diagnostic_variables)
       nconserved = size(model%conserved_quantities)
       ndependencies = size(environment_names)
-      nparameters = model%root%parameters%size()
-      ncouplings = coupling_link_list%count()
    end subroutine get_counts
+
+   function get_root() bind(c) result(proot)
+      !DIR$ ATTRIBUTES DLLEXPORT :: get_root
+      type (c_ptr) :: proot
+
+      type (type_model_list_node),pointer :: res
+
+      allocate(res)
+      res%model => model%root
+      proot = c_loc(res)
+   end function get_root
 
    subroutine get_variable_metadata(category,index,length,name,units,long_name,path) bind(c)
       !DIR$ ATTRIBUTES DLLEXPORT :: get_variable_metadata
@@ -271,30 +267,6 @@
       pvariable = c_loc(variable)
    end function get_variable
 
-   subroutine get_parameter_metadata(index,length,name,units,long_name,typecode,has_default) bind(c)
-      !DIR$ ATTRIBUTES DLLEXPORT :: get_parameter_metadata
-      integer(c_int),        intent(in), value             :: index,length
-      character(kind=c_char),intent(out),dimension(length) :: name,units,long_name
-      integer(c_int),        intent(out)                   :: typecode,has_default
-
-      integer                       :: i
-      class (type_property),pointer :: property
-
-      i = 1
-      property => model%root%parameters%first
-      do while (associated(property))
-         if (index==i) exit
-         property => property%next
-         i = i + 1
-      end do
-
-      call copy_to_c_string(property%name,     name)
-      call copy_to_c_string(property%units,    units)
-      call copy_to_c_string(property%long_name,long_name)
-      typecode = property%typecode()
-      has_default = logical2int(property%has_default)
-   end subroutine get_parameter_metadata
-
    subroutine get_dependency_metadata(index,length,name,units) bind(c)
       !DIR$ ATTRIBUTES DLLEXPORT :: get_dependency_metadata
       integer(c_int),        intent(in), value             :: index,length
@@ -319,37 +291,6 @@
       slave = c_loc(link_slave%original)
       master = c_loc(link_slave%target)
    end subroutine get_coupling
-
-   function variable_get_suitable_masters(pvariable) result(plist) bind(c)
-      !DIR$ ATTRIBUTES DLLEXPORT :: variable_get_suitable_masters
-      type (c_ptr), intent(in), value :: pvariable
-      type (c_ptr)                    :: plist
-
-      type (type_internal_variable),pointer :: variable
-      type (type_link_list),        pointer :: list
-
-      call c_f_pointer(pvariable, variable)
-      list => get_suitable_masters(model,variable)
-      plist = c_loc(list)
-   end function variable_get_suitable_masters
-
-   subroutine get_model_metadata(name,length,long_name,user_created) bind(c)
-      !DIR$ ATTRIBUTES DLLEXPORT :: get_model_metadata
-      character(kind=c_char),intent(in), target :: name(*)
-      integer(c_int),        intent(in), value  :: length
-      character(kind=c_char),intent(out)        :: long_name(length)
-      integer(c_int),        intent(out)        :: user_created
-
-      character(len=attribute_length),pointer   :: pname
-      class (type_base_model),        pointer   :: found_model
-
-      call c_f_pointer(c_loc(name), pname)
-      found_model => model%root%find_model(pname(:index(pname,C_NULL_CHAR)-1))
-      if (.not.associated(found_model)) call driver%fatal_error('get_model_metadata', &
-         'model "'//pname(:index(pname,C_NULL_CHAR)-1)//'" not found.')
-      call copy_to_c_string(found_model%long_name,long_name)
-      user_created = logical2int(found_model%user_created)
-   end subroutine get_model_metadata
 
    subroutine link_dependency_data(index,value) bind(c)
       !DIR$ ATTRIBUTES DLLEXPORT :: link_dependency_data
@@ -442,17 +383,14 @@
       if (allocated(environment_units)) deallocate(environment_units)
    end subroutine finalize
 
-   subroutine reset_parameter(index) bind(c)
+   subroutine reset_parameter(name) bind(c)
       !DIR$ ATTRIBUTES DLLEXPORT :: reset_parameter
-      integer(c_int),value,intent(in) :: index
-      class (type_property),pointer   :: property
+      character(kind=c_char),target,intent(in) :: name(*)
 
-      property => model%root%parameters%get_property(index)
-      if (.not.associated(property)) return
-      call forced_parameters%delete(property%name)
+      character(len=attribute_length),pointer :: pname
 
-      ! Re-initialize the model using updated parameter values
-      call reinitialize()
+      call c_f_pointer(c_loc(name), pname)
+      call reinitialize(pname(:index(pname,C_NULL_CHAR)-1))
    end subroutine reset_parameter
 
    subroutine set_real_parameter(name,value) bind(c)
@@ -463,30 +401,8 @@
       character(len=attribute_length),pointer :: pname
 
       call c_f_pointer(c_loc(name), pname)
-      call forced_parameters%set_real(pname(:index(pname,C_NULL_CHAR)-1),value)
-
-      ! Re-initialize the model using updated parameter values
-      call reinitialize()
+      call reinitialize(pname(:index(pname,C_NULL_CHAR)-1),type_real_property(value=value,source=property_source_user))
    end subroutine set_real_parameter
-
-   function get_real_parameter(index,default) bind(c) result(value)
-      !DIR$ ATTRIBUTES DLLEXPORT :: get_real_parameter
-      integer(c_int),value,intent(in) :: index,default
-      real(c_double)                  :: value
-      class (type_property),pointer   :: property
-
-      property => model%root%parameters%get_property(index)
-      select type (property)
-      class is (type_real_property)
-         if (int2logical(default)) then
-            value = property%default
-         else
-            value = property%value
-         end if
-      class default
-         call driver%fatal_error('get_real_parameter','not a real variable')
-      end select
-   end function get_real_parameter
 
    subroutine set_integer_parameter(name,value) bind(c)
       !DIR$ ATTRIBUTES DLLEXPORT :: set_integer_parameter
@@ -496,30 +412,8 @@
       character(len=attribute_length),pointer :: pname
 
       call c_f_pointer(c_loc(name), pname)
-      call forced_parameters%set_integer(pname(:index(pname,C_NULL_CHAR)-1),value)
-
-      ! Re-initialize the model using updated parameter values
-      call reinitialize()
+      call reinitialize(pname(:index(pname,C_NULL_CHAR)-1),type_integer_property(value=value,source=property_source_user))
    end subroutine set_integer_parameter
-
-   function get_integer_parameter(index,default) bind(c) result(value)
-      !DIR$ ATTRIBUTES DLLEXPORT :: get_integer_parameter
-      integer(c_int),value,intent(in) :: index,default
-      integer(c_int)                  :: value
-      class (type_property),pointer   :: property
-
-      property => model%root%parameters%get_property(index)
-      select type (property)
-      class is (type_integer_property)
-         if (int2logical(default)) then
-            value = property%default
-         else
-            value = property%value
-         end if
-      class default
-         call driver%fatal_error('get_integer_parameter','not an integer variable')
-      end select
-   end function get_integer_parameter
 
    subroutine set_logical_parameter(name,value) bind(c)
       !DIR$ ATTRIBUTES DLLEXPORT :: set_logical_parameter
@@ -529,30 +423,8 @@
       character(len=attribute_length),pointer :: pname
 
       call c_f_pointer(c_loc(name), pname)
-      call forced_parameters%set_logical(pname(:index(pname,C_NULL_CHAR)-1),int2logical(value))
-
-      ! Re-initialize the model using updated parameter values
-      call reinitialize()
+      call reinitialize(pname(:index(pname,C_NULL_CHAR)-1),type_logical_property(value=int2logical(value),source=property_source_user))
    end subroutine set_logical_parameter
-
-   function get_logical_parameter(index,default) bind(c) result(value)
-      !DIR$ ATTRIBUTES DLLEXPORT :: get_logical_parameter
-      integer(c_int),value,intent(in) :: index,default
-      integer(c_int)                  :: value
-      class (type_property),pointer   :: property
-
-      property => model%root%parameters%get_property(index)
-      select type (property)
-      class is (type_logical_property)
-         if (int2logical(default)) then
-            value = logical2int(property%default)
-         else
-            value = logical2int(property%value)
-         end if
-      class default
-         call driver%fatal_error('get_logical_parameter','not a logical variable')
-      end select
-   end function get_logical_parameter
 
    subroutine set_string_parameter(name,value) bind(c)
       !DIR$ ATTRIBUTES DLLEXPORT :: set_string_parameter
@@ -562,31 +434,8 @@
 
       call c_f_pointer(c_loc(name),  pname)
       call c_f_pointer(c_loc(value), pvalue)
-      call forced_parameters%set_string(pname(:index(pname,C_NULL_CHAR)-1),pvalue(:index(pname,C_NULL_CHAR)-1))
-
-      ! Re-initialize the model using updated parameter values
-      call reinitialize()
+      call reinitialize(pname(:index(pname,C_NULL_CHAR)-1),type_string_property(value=pvalue(:index(pname,C_NULL_CHAR)-1),source=property_source_user))
    end subroutine set_string_parameter
-
-   subroutine get_string_parameter(index,default,length,value) bind(c)
-      !DIR$ ATTRIBUTES DLLEXPORT :: get_string_parameter
-      integer(c_int),value,intent(in) :: index,default,length
-      character(kind=c_char)          :: value(length)
-
-      class (type_property),pointer   :: property
-
-      property => model%root%parameters%get_property(index)
-      select type (property)
-      class is (type_string_property)
-         if (int2logical(default)) then
-            call copy_to_c_string(property%default, value)
-         else
-            call copy_to_c_string(property%value, value)
-         end if
-      class default
-         call driver%fatal_error('get_string_parameter','not a string variable')
-      end select
-   end subroutine get_string_parameter
 
    subroutine python_driver_fatal_error(self,location,message)
       class (type_python_driver),intent(inout) :: self

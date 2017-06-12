@@ -658,7 +658,7 @@
       set_element => unretrieved%first
       do while (associated(set_element))
          islash = index(set_element%string,'/',.true.)
-         call fatal_error('fabm_initialize','model '//set_element%string(1:islash-1)//' does not contain variable "'//trim(set_element%string(islash+1:))//'" mentioned in coupling section.')
+         !call fatal_error('fabm_initialize','model '//set_element%string(1:islash-1)//' does not contain variable "'//trim(set_element%string(islash+1:))//'" mentioned in coupling section.')
          set_element => set_element%next
       end do
       call unretrieved%finalize()

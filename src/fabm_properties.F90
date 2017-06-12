@@ -19,10 +19,13 @@ module fabm_properties
 
    integer, parameter :: typecode_unknown = -1, typecode_real = 1, typecode_integer = 2, typecode_logical = 3, typecode_string = 4
 
+   integer, parameter, public ::  property_source_default = 0, property_source_code = 1, property_source_user = 2
+
    type,abstract :: type_property
       character(len=metadata_string_length) :: long_name   = ''
       character(len=metadata_string_length) :: units       = ''
       logical                               :: has_default = .false.
+      integer                               :: source      = property_source_code
    contains
       procedure :: typecode
       procedure :: to_real
@@ -73,20 +76,18 @@ module fabm_properties
       generic :: set => set_property, set_real, set_integer, set_logical, set_string
 
       procedure :: get_property_by_name
-      procedure :: get_property_by_index
-      generic   :: get_property => get_property_by_name,get_property_by_index
+      generic   :: get_property => get_property_by_name
       procedure :: get_real
       procedure :: get_integer
       procedure :: get_logical
       procedure :: get_string
 
       procedure :: delete_by_name
-      procedure :: delete_by_index
-      generic   :: delete => delete_by_name, delete_by_index
+      !procedure :: delete_by_index
+      generic   :: delete => delete_by_name !, delete_by_index
 
       procedure :: update
 
-      procedure :: size => get_size
       procedure :: keys
 
       procedure :: compare_keys
@@ -119,12 +120,13 @@ module fabm_properties
    end type
 
    type,extends(type_property_dictionary) :: type_hierarchical_dictionary
-      type (type_set)                                   :: missing
       type (type_hierarchical_dictionary_node), pointer :: first_child => null()
    contains
       procedure :: add_child            => hierarchical_dictionary_add_child
       procedure :: set_property         => hierarchical_dictionary_set_property
       procedure :: collect_unretrieved  => hierarchical_dictionary_collect_unretrieved
+      procedure :: update               => hierarchical_dictionary_update
+      procedure :: delete_by_name       => hierarchical_dictionary_delete_by_name
    end type
 
 contains
@@ -254,20 +256,25 @@ contains
       equal = string_lower(key1)==string_lower(key2)
    end function
 
-   subroutine check(self)
+   subroutine check(self,caller)
       class (type_property_dictionary),intent(in) :: self
+      character(len=*),                intent(in) :: caller
       type (type_key_property_pair),pointer :: current,previous
 #ifndef NDEBUG
       previous => null()
       current => self%first
       do while (associated(current))
-         if (.not.associated(current%property)) &
-            stop 'property not associated'
+         if (.not.associated(current%property)) then         
+            write (*,*) 'property not associated after '//caller
+            stop 1
+         end if
          previous => current
          current => previous%next
       end do
-      if (.not.associated(self%last,previous)) &
-         stop 'last does not macth actual last node'
+      if ((associated(self%last).or.associated(previous)).and..not.associated(self%last,previous)) then
+         write (*,*) 'last does not match actual last node after '//caller
+         stop 1
+      end if
 #endif
    end subroutine
 
@@ -333,7 +340,7 @@ contains
       current%name = name
       current%retrieved = .true.
       allocate(current%property,source=property)
-      call check(self)
+      call check(self,'set_property')
    end subroutine
 
    subroutine clear_retrieved(self)
@@ -348,46 +355,74 @@ contains
       end do
    end subroutine
 
-   subroutine update(self,source,overwrite)
+   subroutine update(self,source,overwrite,minimum_source)
       class (type_property_dictionary),intent(inout) :: self
       class (type_property_dictionary),intent(in)    :: source
       logical,optional,                intent(in)    :: overwrite
+      integer,optional,                intent(in)    :: minimum_source
 
+      integer                               :: minimum_source_
       type (type_key_property_pair),pointer :: current
 
+      minimum_source_ = property_source_default
+      if (present(minimum_source)) minimum_source_ = minimum_source
       current => source%first
       do while (associated(current))
-         call self%set_property(current%name,current%property,overwrite)
+         if (current%property%source >= minimum_source_) call self%set_property(current%name,current%property,overwrite)
          current => current%next
       end do
    end subroutine
 
-   subroutine set_real(self,name,value)
+   subroutine set_real(self,name,value,source)
       class (type_property_dictionary),intent(inout) :: self
       character(len=*),                intent(in)    :: name
       real(rk),                        intent(in)    :: value
-      call self%set_property(name,type_real_property(value=value))
+      integer,optional,                intent(in)    :: source
+
+      type (type_real_property) :: property
+
+      property%value = value
+      if (present(source)) property%source = source
+      call self%set_property(name,property)
    end subroutine
 
-   subroutine set_integer(self,name,value)
+   subroutine set_integer(self,name,value,source)
       class (type_property_dictionary),intent(inout) :: self
       character(len=*),                intent(in)    :: name
       integer,                         intent(in)    :: value
-      call self%set_property(name,type_integer_property(value=value))
+      integer,optional,                intent(in)    :: source
+
+      type (type_integer_property) :: property
+
+      property%value = value
+      if (present(source)) property%source = source
+      call self%set_property(name,property)
    end subroutine
 
-   subroutine set_logical(self,name,value)
+   subroutine set_logical(self,name,value,source)
       class (type_property_dictionary),intent(inout) :: self
       character(len=*),                intent(in)    :: name
       logical,                         intent(in)    :: value
-      call self%set_property(name,type_logical_property(value=value))
+      integer,optional,                intent(in)    :: source
+
+      type (type_logical_property) :: property
+
+      property%value = value
+      if (present(source)) property%source = source
+      call self%set_property(name,property)
    end subroutine
 
-   subroutine set_string(self,name,value)
+   subroutine set_string(self,name,value,source)
       class (type_property_dictionary),intent(inout) :: self
       character(len=*),                intent(in)    :: name
       character(len=*),                intent(in)    :: value
-      call self%set_property(name,type_string_property(value=value))
+      integer,optional,                intent(in)    :: source
+
+      type (type_string_property) :: property
+
+      property%value = value
+      if (present(source)) property%source = source
+      call self%set_property(name,property)
    end subroutine
 
    function get_property_by_name(self,name) result(property)
@@ -407,28 +442,6 @@ contains
             return
          end if
          current => current%next
-      end do
-      property => null()
-   end function
-
-   function get_property_by_index(self,index) result(property)
-      class (type_property_dictionary),intent(inout) :: self
-      integer,                         intent(in)    :: index
-      class (type_property),pointer                  :: property
-
-      integer                               :: i
-      type (type_key_property_pair),pointer :: current
-
-      i = 1
-      current => self%first
-      do while (associated(current))
-         if (i==index) then
-            property => current%property
-            current%retrieved = .true.
-            return
-         end if
-         current => current%next
-         i = i + 1
       end do
       property => null()
    end function
@@ -509,54 +522,13 @@ contains
             deallocate(current%property)
             deallocate(current)
             if (associated(self%last,current)) self%last => previous
-            call check(self)
+            call check(self,'delete_by_name')
             return
          end if
          previous => current
          current => current%next
       end do
    end subroutine
-
-   subroutine delete_by_index(self,index)
-      class (type_property_dictionary),intent(inout) :: self
-      integer,                         intent(in)    :: index
-
-      type (type_key_property_pair),pointer :: current,previous
-      integer                            :: i
-
-      previous => null()
-      current => self%first
-      do while (associated(current))
-         if (i==index) then
-            if (associated(previous)) then
-               previous%next => current%next
-            else
-               self%first => current%next
-            end if
-            deallocate(current%property)
-            deallocate(current)
-            if (associated(self%last,current)) self%last => previous
-            call check(self)
-            return
-         end if
-         previous => current
-         current => current%next
-         i = i + 1
-      end do
-   end subroutine
-
-   function get_size(self) result(n)
-      class (type_property_dictionary),intent(in) :: self
-      integer :: n
-      type (type_key_property_pair),pointer :: current
-
-      n = 0
-      current => self%first
-      do while (associated(current))
-         n = n + 1
-         current => current%next
-      end do
-   end function
 
    subroutine keys(self,names)
       class (type_property_dictionary),intent(in) :: self
@@ -565,7 +537,15 @@ contains
       integer :: n
       type (type_key_property_pair),pointer :: current
 
-      allocate(names(self%size()))
+      n = 0
+      current => self%first
+      do while (associated(current))
+         n = n + 1
+         current => current%next
+      end do     
+
+      allocate(names(n))
+
       n = 0
       current => self%first
       do while (associated(current))
@@ -589,7 +569,7 @@ contains
       end do
       self%first => null()
       self%last  => null()
-      call check(self)
+      call check(self,'finalize')
    end subroutine finalize
 
    logical function set_contains(self,string)
@@ -773,6 +753,43 @@ contains
          call node%p%collect_unretrieved(set,prefix=prefix//trim(node%name)//'/')
          node => node%next
       end do
+   end subroutine
+
+   recursive subroutine hierarchical_dictionary_update(self,source,overwrite,minimum_source)
+      class (type_hierarchical_dictionary),intent(inout) :: self
+      class (type_property_dictionary),    intent(in)    :: source
+      logical,optional,                    intent(in)    :: overwrite
+      integer,optional,                    intent(in)    :: minimum_source
+
+      type (type_hierarchical_dictionary_node), pointer :: node, target_node
+
+      call self%type_property_dictionary%update(source,overwrite,minimum_source)
+
+      select type (source)
+      class is (type_hierarchical_dictionary)
+         node => source%first_child
+         do while (associated(node))
+            target_node => hierarchical_dictionary_get_child(self,node%name,create=.true.)
+            call target_node%p%update(node%p,overwrite,minimum_source)
+            node => node%next
+         end do
+      end select
+   end subroutine
+
+   recursive subroutine hierarchical_dictionary_delete_by_name(self,name)
+      class (type_hierarchical_dictionary),intent(inout) :: self
+      character(len=*),                    intent(in)    :: name
+
+      integer :: islash
+      type (type_hierarchical_dictionary_node), pointer :: child
+
+      islash = index(name,'/')
+      if (islash/=0) then
+         child => hierarchical_dictionary_get_child(self,name(:islash-1),create=.true.)
+         call child%p%delete(name(islash+1:))
+      else
+         call self%type_property_dictionary%delete(name)
+      end if
    end subroutine
 
 end module fabm_properties

@@ -27,10 +27,17 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/../.. fabm)
 add_library(python_fabm SHARED
             python_fabm.F90
             variable.F90
+            parameter.F90
+            model.F90
             link_list.F90
             c_helper.F90
             helper.F90
+            pyfabm/__init__.py
+            pyfabm/complete_yaml.py
+            pyfabm/gui_qt.py
            )
+
+source_group(pyfabm REGULAR_EXPRESSION pyfabm/)
 
 # Link in FABM itself
 target_link_libraries(python_fabm fabm)

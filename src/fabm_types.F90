@@ -857,7 +857,7 @@
       call model%parameters%collect_unretrieved(unretrieved,'')
       set_element => unretrieved%first
       do while (associated(set_element))
-         call fatal_error('create_model_from_dictionary', 'Unrecognized parameter "'//trim(set_element%string)//'" found below '//trim(model%get_path())//'.')
+         !call fatal_error('create_model_from_dictionary', 'Unrecognized parameter "'//trim(set_element%string)//'" found below '//trim(model%get_path())//'.')
          set_element => set_element%next
       end do
       call unretrieved%finalize()
@@ -2444,6 +2444,7 @@ subroutine get_real_parameter(self,value,name,units,long_name,default,scale_fact
    if (present(default)) then
       current_parameter%has_default = .true.
       current_parameter%default = default
+      current_parameter%source = property_source_default
       value = default
    end if
 
@@ -2454,9 +2455,8 @@ subroutine get_real_parameter(self,value,name,units,long_name,default,scale_fact
       value = property%to_real(success=success)
       if (.not.success) call self%fatal_error('get_real_parameter', &
          'Value "'//trim(property%to_string())//'" for parameter "'//trim(name)//'" is not a real number.')
-   elseif (present(default)) then
-      call self%parameters%missing%add(name)
-   else
+      current_parameter%source = property%source
+   elseif (.not.present(default)) then
       call self%fatal_error('get_real_parameter','No value provided for parameter "'//trim(name)//'".')
    end if
 
@@ -2523,6 +2523,7 @@ subroutine get_integer_parameter(self,value,name,units,long_name,default,minimum
    if (present(default)) then
       current_parameter%has_default = .true.
       current_parameter%default = default
+      current_parameter%source = property_source_default
       value = default
    end if
 
@@ -2533,9 +2534,8 @@ subroutine get_integer_parameter(self,value,name,units,long_name,default,minimum
       value = property%to_integer(success=success)
       if (.not.success) call self%fatal_error('get_integer_parameter', &
          'Value "'//trim(property%to_string())//'" for parameter "'//trim(name)//'" is not an integer number.')
-   elseif (present(default)) then
-      call self%parameters%missing%add(name)
-   else
+      current_parameter%source = property%source
+   elseif (.not.present(default)) then
       call self%fatal_error('get_integer_parameter','No value provided for parameter "'//trim(name)//'".')
    end if
 
@@ -2582,6 +2582,7 @@ subroutine get_logical_parameter(self,value,name,units,long_name,default)
    if (present(default)) then
       current_parameter%has_default = .true.
       current_parameter%default = default
+      current_parameter%source = property_source_default
       value = default
    end if
 
@@ -2592,9 +2593,8 @@ subroutine get_logical_parameter(self,value,name,units,long_name,default)
       value = property%to_logical(success=success)
       if (.not.success) call self%fatal_error('get_logical_parameter', &
          'Value "'//trim(property%to_string())//'" for parameter "'//trim(name)//'" is not a Boolean value.')
-   elseif (present(default)) then
-      call self%parameters%missing%add(name)
-   else
+      current_parameter%source = property%source
+   elseif (.not.present(default)) then
       call self%fatal_error('get_logical_parameter','No value provided for parameter "'//trim(name)//'".')
    end if
 
@@ -2624,6 +2624,7 @@ recursive subroutine get_string_parameter(self,value,name,units,long_name,defaul
    if (present(default)) then
       current_parameter%has_default = .true.
       current_parameter%default = default
+      current_parameter%source = property_source_default
       value = default
    end if
 
@@ -2634,9 +2635,8 @@ recursive subroutine get_string_parameter(self,value,name,units,long_name,defaul
       value = property%to_string(success=success)
       if (.not.success) call self%fatal_error('get_string_parameter', &
          'Value for parameter "'//trim(name)//'" cannot be converted to string.')
-   elseif (present(default)) then
-      call self%parameters%missing%add(name)
-   else
+      current_parameter%source = property%source
+   elseif (.not.present(default)) then
       call self%fatal_error('get_string_parameter','No value provided for parameter "'//trim(name)//'".')
    end if
 

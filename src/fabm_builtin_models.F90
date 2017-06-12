@@ -9,7 +9,7 @@ module fabm_builtin_models
    private
 
    public type_weighted_sum,type_horizontal_weighted_sum,type_depth_integral,copy_fluxes,copy_horizontal_fluxes
-   !public type_horizontal_flux_copier, type_horizontal_flux_copier
+   public type_surface_source_copier
 
    type,extends(type_base_model_factory) :: type_factory
       contains
@@ -273,13 +273,20 @@ module fabm_builtin_models
       integer,                  intent(in)           :: configunit
 
       type (type_component),pointer :: component
-      integer           :: ncomponents, i
+      integer           :: ncomponents_default, ncomponents, i
       character(len=10) :: temp
       real(rk)          :: weight
       class (type_weighted_sum_sms_distributor), pointer :: sms_distributor
 
-      call self%get_parameter(ncomponents,'n','','number of terms in summation',default=0,minimum=0)
-      do i=1,ncomponents
+      ncomponents_default = 0
+      component => self%first
+      do while (associated(component))
+         ncomponents_default = ncomponents_default + 1
+         component => component%next
+      end do
+
+      call self%get_parameter(ncomponents,'n','','number of terms in summation',default=ncomponents_default,minimum=0)
+      do i=1,ncomponents-ncomponents_default
          call self%add_component('')
       end do
       call self%get_parameter(self%units,'units','','units',default=trim(self%units))

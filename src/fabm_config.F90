@@ -3,7 +3,7 @@
 module fabm_config
 
    use fabm_types
-   use fabm_properties,only:type_property_dictionary,type_set_element,type_set
+   use fabm_properties,only:type_property_dictionary,type_set_element,type_set,property_source_user
    use fabm_driver
    use fabm,only:type_model,fabm_initialize_library,fabm_initialize
 
@@ -21,11 +21,11 @@ module fabm_config
 contains
 
    subroutine fabm_create_model_from_yaml_file(model,path,do_not_initialize,parameters,unit)
-      type (type_model),                       intent(out) :: model
-      character(len=*),               optional,intent(in)  :: path
-      logical,                        optional,intent(in)  :: do_not_initialize
-      type (type_property_dictionary),optional,intent(in)  :: parameters
-      integer,                        optional,intent(in)  :: unit
+      type (type_model),                        intent(out) :: model
+      character(len=*),                optional,intent(in)  :: path
+      logical,                         optional,intent(in)  :: do_not_initialize
+      class (type_property_dictionary),optional,intent(in)  :: parameters
+      integer,                         optional,intent(in)  :: unit
 
       class (type_node),pointer        :: node
       character(len=yaml_error_length) :: yaml_error
@@ -69,10 +69,10 @@ contains
    end subroutine fabm_create_model_from_yaml_file
 
    subroutine create_model_tree_from_dictionary(model,mapping,do_not_initialize,parameters)
-      type (type_model),                       intent(out) :: model
-      class (type_dictionary),                 intent(in)  :: mapping
-      logical,                        optional,intent(in)  :: do_not_initialize
-      type (type_property_dictionary),optional,intent(in)  :: parameters
+      type (type_model),                        intent(out) :: model
+      class (type_dictionary),                  intent(in)  :: mapping
+      logical,                         optional,intent(in)  :: do_not_initialize
+      class (type_property_dictionary),optional,intent(in)  :: parameters
 
       class (type_node),pointer          :: node
       character(len=64)                  :: instancename
@@ -190,7 +190,7 @@ contains
          do while (associated(pair))
             select type (value=>pair%value)
                class is (type_scalar)
-                  call model%parameters%set_string(trim(pair%key),trim(value%string))
+                  call model%parameters%set_string(trim(pair%key),trim(value%string), source=property_source_user)
                class is (type_node)
                   call fatal_error('create_model_from_dictionary','BUG: "flatten" should &
                      &have ensured that the value of '//trim(value%path)//' is scalar, not a nested dictionary.')
@@ -207,9 +207,9 @@ contains
       call log_message('   initialization succeeded.')
 
       ! Check for parameters requested by the model, but not present in the configuration file.
-      if (require_all_parameters.and.associated(model%parameters%missing%first)) &
-         call fatal_error('create_model_from_dictionary','Value for parameter "'// &
-            trim(model%parameters%missing%first%string)//'" of model "'//trim(instancename)//'" is not provided.')
+      !if (require_all_parameters.and.associated(model%parameters%missing%first)) &
+      !   call fatal_error('create_model_from_dictionary','Value for parameter "'// &
+      !      trim(model%parameters%missing%first%string)//'" of model "'//trim(instancename)//'" is not provided.')
 
       ! Interpret coupling links specified in configuration file.
       ! These override any couplings requested by the models during initialization.
@@ -221,7 +221,7 @@ contains
          do while (associated(pair))
             select type (value=>pair%value)
             class is (type_scalar)
-               call model%couplings%set_string(trim(pair%key),trim(value%string))
+               call model%couplings%set_string(trim(pair%key),trim(value%string), source=property_source_user)
             class is (type_node)
                call fatal_error('create_model_from_dictionary','The value of '//trim(value%path)// &
                   ' must be a string, not a nested dictionary.')
