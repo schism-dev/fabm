@@ -1,0 +1,6 @@
+instances:
+  cosine:
+    model: vims/cosine
+    parameters:
+    initialization:
+      no3: 4.5         # nitrate (mmol m-3)
