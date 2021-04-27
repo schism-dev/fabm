@@ -28,6 +28,7 @@ set(DEFAULT_INSTITUTES
     selma        # Simple EcoLogical Model for the Aquatic - PROGNOS
     su           # Swansea University, United Kingdom
     uhh          # University of Hamburg, Germany
+    vims         # Virginia Institute of Marine Science, USA
 )
 
 # Ensure FABM_INSTITUTES tracks the up-to-date DEFAULT_INSTITUTES list unless the user manually customized FABM_INSTITUTES.
