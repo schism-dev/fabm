@@ -67,7 +67,7 @@ contains
       ! Phosphate PO4 10 mmol/m3
       ! Dissolved Oxygen DOX 11 mmol m-3
       ! Dioxide Carbon CO2 12 mmol m-3
-      ! Alkalinity ALK
+      ! Alkalinity ALK 13 meq m-3
 
       call self%register_state_variable(self%id_no3, 'no3', 'mmol m-3', 'Nitrate',    4.5_rk, minimum=0.0_rk, no_river_dilution=.true.)
 
