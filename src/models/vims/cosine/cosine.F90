@@ -337,44 +337,42 @@ contains
          qcos(5)=NPS2+RPS2-GS2Z2-MTS2
 
          !Z1
-         EXZ1=self%kex1*Z1
+         EXZ1=self%kex1*OXR*Z1
          MTZ1=self%gammaz*Z1*Z1
-         qcos(6)=self%gamma1*GS1Z1-OXR*EXZ1-GZ1Z2-MTZ1
+         qcos(6)=self%gamma1*GS1Z1-EXZ1-GZ1Z2-MTZ1
         
          !Z2
-         EXZ2=self%kex2*Z2 
+         EXZ2=self%kex2*OXR*Z2 
          MTZ2=self%gammaz*Z2*Z2
-         qcos(7)=self%gamma2*GTZ2-OXR*EXZ2-MTZ2
+         qcos(7)=self%gamma2*GTZ2-EXZ2-MTZ2
 
          !DN
-         MIDN=max(self%kmdn1*temp+self%kmdn2,0.05_rk)*DN
-         qcos(8)=(1.0_rk-self%gamma1)*GS1Z1+(1.0_rk-self%gamma2)*GTZ2 &
-                &-GDNZ2+MTS1+MTS2+MTZ1+MTZ2-OXR*MIDN
+         MIDN=max(self%kmdn1*temp+self%kmdn2,0.05_rk)*OXR*DN
+         qcos(8)=(1.0_rk-self%gamma1)*GS1Z1+(1.0_rk-self%gamma2)*GTZ2-GDNZ2 &
+                & +MTS1+MTS2+MTZ1+MTZ2-MIDN
 
          !DSi
          MIDSi=max(self%kmdsi1*temp+self%kmdsi2,0.01_rk)*DSi
          qcos(9)=(GS2Z2+MTS2)*self%si2n-MIDSi
 
          !NO3
-         Nit=self%gamman*NH4
-         qcos(1)=-NPS1-NPS2+OXR*Nit
+         Nit=self%gamman*OXR*NH4
+         qcos(1)=-NPS1-NPS2+Nit
 
          !NH4
-         qcos(3)=-RPS1-RPS2+OXR*EXZ1+OXR*EXZ2-OXR*Nit+OXR*MIDN
+         qcos(3)=-RPS1-RPS2+EXZ1+EXZ2-Nit+MIDN
 
          !SiO4
          qcos(2)=-(NPS2+RPS2)*self%si2n+MIDSi
 
          !PO4
-         qcos(10)=-(NPS1+RPS1+NPS2+RPS2)*self%p2n+OXR*(EXZ1+EXZ2)*self%p2n &
-                &+OXR*MIDN*self%p2n+MIDSi*self%p2n/self%si2n 
+         qcos(10)=(EXZ1+EXZ2+MIDN+MIDSi/self%si2n-NPS1-RPS1-NPS2-RPS2)*self%p2n
 
          !DOX       
-         qcos(11)=(NPS1+NPS2)*self%o2no+(RPS1+RPS2)*self%o2nh &
-                 &-2.0_rk*OXR*Nit-OXR*(EXZ1+EXZ2)*self%o2nh-OXR*MIDN*self%o2nh 
+         qcos(11)=(NPS1+NPS2)*self%o2no+(RPS1+RPS2-EXZ1-EXZ2-MIDN)*self%o2nh-2.0_rk*Nit
 
          !CO2
-         qcos(12)=-(NPS1+RPS1+NPS2+RPS2)*self%c2n+OXR*(EXZ1+EXZ2)*self%c2n+OXR*MIDN*self%c2n
+         qcos(12)=(EXZ1+EXZ2+MIDN-NPS1-RPS1-NPS2-RPS2)*self%c2n
 
          !ALK
          qcos(13)=-qcos(1)+qcos(3)
