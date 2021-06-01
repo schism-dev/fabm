@@ -197,7 +197,7 @@ contains
       call self%add_to_aggregate_variable(standard_variables%attenuation_coefficient_of_photosynthetic_radiative_flux, self%ak1)
       call self%add_to_aggregate_variable(standard_variables%attenuation_coefficient_of_photosynthetic_radiative_flux, self%id_S1, scale_factor=self%ak2)
       call self%add_to_aggregate_variable(standard_variables%attenuation_coefficient_of_photosynthetic_radiative_flux, self%id_S2, scale_factor=self%ak2)
-      !constant SPM (todo: need add a varibles, check model%prepare_inputs() function)
+      !constant SPM (todo: need add a varibles, check model%prepare_inputs() function )
       !call self%add_to_aggregate_variable(standard_variables%attenuation_coefficient_of_photosynthetic_radiative_flux, 20.0_rk, scale_factor=self%ak3)
 
    end subroutine initialize
