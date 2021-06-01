@@ -248,6 +248,7 @@ contains
           _GET_(self%id_salt,salt)        
           _GET_(self%id_zr,zr)        
           _GET_(self%id_dep,dep)        
+         zr=-zr
 
          !-----------------------------------------------------------------
          !CoSiNE model kinetics: pre-calculation
