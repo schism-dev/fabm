@@ -5,7 +5,7 @@
 !                     a comma-separated list of one or model model names
 !-------------------------------------------------------------------------------
 &fabm_nml
-   models = 'hzg_omexdia_p'
+   models = 'hereon_omexdia_p'
 /
 
 !-------------------------------------------------------------------------------
@@ -29,7 +29,7 @@
 ! kinNO3anox      = 1.     #mmolNO3/m3  half-sat NO3 inhib anoxic min
 ! kinO2anox       = 1.     #mmolO2/m3   half-sat O2 inhib anoxic min
 !-------------------------------------------------------------------------------
-&hzg_omexdia_p
+&hereon_omexdia_p
 rFast           = 0.01
 rSlow           = 0.00001
 NCrFdet         = 0.2 
