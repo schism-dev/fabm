@@ -3,10 +3,10 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !MODULE: fabm_hereon_omexdia_p --- Fortran 2003 version of OMEXDIA+P biogeochemical model
+! !MODULE: hereon_omexdia_p --- Fortran 2003 version of OMEXDIA+P biogeochemical model
 !
 ! !INTERFACE:
-   module fabm_hereon_omexdia_p
+   module hereon_omexdia_p
 !
 ! !DESCRIPTION:
 !
@@ -270,5 +270,5 @@
    end subroutine do
 !EOC
 
-   end module fabm_hereon_omexdia_p
+   end module hereon_omexdia_p
 
