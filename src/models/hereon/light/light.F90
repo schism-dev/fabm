@@ -1,7 +1,16 @@
 #include "fabm_driver.h"
 
 ! This is a FABM implementation of the two-band light model used in
-! the General Ocean Turbulence Model (GOTM)
+! the General Ocean Turbulence Model (GOTM), extended to spatially variable 
+! parameters
+!
+! @license Gnu General Public License v3.0 or later
+!
+! @copyright 2015-2021 Bolding and Brueggeman
+! @copyright 2021 Helmholtz-Zentrum Hereon
+
+! @author Jorn Brueggeman
+! @author Carsten Lemmen
 !
 ! It distinguishes two wavebands:
 ! * visible (equivalent to photosynthetically activate radation, PAR, 400 - 700 nm)
@@ -26,6 +35,9 @@ module hereon_light
 
    type, extends(type_base_model), public :: type_hereon_light
       ! Identifiers for dependencies [model inputs]
+      type (type_surface_dependency_id) :: id_a    ! non-visible fraction of shortwave radiation
+      type (type_surface_dependency_id) :: id_g1   ! e-folding depth of visible fraction
+      type (type_surface_dependency_id) :: id_g2   ! e-folding depth of non-visible fraction
       type (type_surface_dependency_id) :: id_swr0 ! Surface shortwave radiation
       type (type_dependency_id)         :: id_dz   ! Cell thickness
       type (type_dependency_id)         :: id_ext  ! Attentuation coefficient for PAR
@@ -35,8 +47,6 @@ module hereon_light
       type (type_diagnostic_variable_id)         :: id_swr  ! Shortwave radiation
       type (type_surface_diagnostic_variable_id) :: id_par0 ! Surface photosynthetically active radiation
 
-      ! Parameters
-      real(rk) :: a, g1, g2
    contains
       ! Model procedures
       procedure :: initialize
@@ -49,9 +59,9 @@ contains
       class (type_hereon_light), intent(inout), target :: self
       integer,                 intent(in)            :: configunit
 
-      call self%get_parameter(self%a,  'a',  '-','non-visible fraction of shortwave radiation', default=0.58_rk) 
-      call self%get_parameter(self%g1, 'g1', 'm','e-folding depth of non-visible fraction',     default=0.35_rk)
-      call self%get_parameter(self%g2, 'g2', 'm','e-folding depth of visible fraction',         default=23.0_rk) 
+      !call self%get_parameter(elf%a,  'a',  '-','non-visible fraction of shortwave radiation', default=0.58_rk) 
+      !call self%get_parameter(self%g1, 'g1', 'm','e-folding depth of non-visible fraction',     default=0.35_rk)
+      !call self%get_parameter(self%g2, 'g2', 'm','e-folding depth of visible fraction',         default=23.0_rk) 
 
       ! Register diagnostic variables
       call self%register_diagnostic_variable(self%id_swr, 'swr', 'W m-2', 'shortwave radiation', &
@@ -65,16 +75,22 @@ contains
       call self%register_dependency(self%id_swr0, standard_variables%surface_downwelling_shortwave_flux)
       call self%register_dependency(self%id_ext,  standard_variables%attenuation_coefficient_of_photosynthetic_radiative_flux)
       call self%register_dependency(self%id_dz,   standard_variables%cell_thickness)
+      call self%register_dependency(self%id_a,    'a',  '-','novn-isible fraction of shortwave radiation')
+      call self%register_dependency(self%id_g1,   'g1', 'm','e-folding depth of non-visible fraction')
+      call self%register_dependency(self%id_g2,   'g2', 'm','e-folding depth of visible fraction')
    end subroutine
    
    subroutine do_column(self, _ARGUMENTS_DO_COLUMN_)
       class (type_hereon_light), intent(in) :: self
       _DECLARE_ARGUMENTS_DO_COLUMN_
 
-      real(rk) :: swr0, dz, swr, par, z, ext, bioext
+      real(rk) :: swr0, dz, swr, par, z, ext, bioext, a, g1, g2
 
       _GET_SURFACE_(self%id_swr0,swr0)
-      _SET_SURFACE_DIAGNOSTIC_(self%id_par0,swr0 * (1.0_rk - self%a))
+      _GET_SURFACE_(self%id_a,a)
+      _GET_SURFACE_(self%id_g1,g1)
+      _GET_SURFACE_(self%id_g2,g2)
+      _SET_SURFACE_DIAGNOSTIC_(self%id_par0,swr0 * (1.0_rk - a))
       z = 0.0_rk
       bioext = 0.0_rk
       _DOWNWARD_LOOP_BEGIN_
@@ -86,8 +102,8 @@ contains
          bioext = bioext + ext * dz * 0.5_rk
 
          ! Calculate photosynthetically active radiation (PAR), shortwave radiation, and PAR attenuation.
-         par = swr0 * (1.0_rk - self%a) * exp(-z / self%g2 - bioext)
-         swr = par + swr0 * self%a * exp(-z / self%g1)
+         par = swr0 * (1.0_rk - a) * exp(-z / g2 - bioext)
+         swr = par + swr0 * a * exp(-z / g1)
 
          ! Move to bottom of layer
          z = z + dz * 0.5_rk
