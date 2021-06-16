@@ -3,10 +3,10 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !MODULE: fabm_hzg_omexdia_p --- Fortran 2003 version of OMEXDIA+P biogeochemical model
+! !MODULE: hereon_omexdia_p --- Fortran 2003 version of OMEXDIA+P biogeochemical model
 !
 ! !INTERFACE:
-   module fabm_hzg_omexdia_p
+   module hereon_omexdia_p
 !
 ! !DESCRIPTION:
 !
@@ -23,7 +23,7 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public type_hzg_omexdia_p
+   public type_hereon_omexdia_p
 !
 ! !PRIVATE DATA MEMBERS:
    real(rk), parameter :: secs_pr_day = 86400.0_rk
@@ -33,7 +33,7 @@
 !
 !
 ! !PUBLIC DERIVED TYPES:
-   type,extends(type_base_model) :: type_hzg_omexdia_p
+   type,extends(type_base_model) :: type_hereon_omexdia_p
 !     Variable identifiers
       type (type_state_variable_id)        :: id_fdet,id_sdet,id_pdet
       type (type_state_variable_id)        :: id_no3,id_nh3,id_oxy,id_po4,id_odu
@@ -52,7 +52,7 @@
       procedure :: initialize
       procedure :: do
 
-   end type type_hzg_omexdia_p
+   end type type_hereon_omexdia_p
 !EOP
 !-----------------------------------------------------------------------
 
@@ -71,7 +71,7 @@
 !  by the model are registered with FABM.
 !
 ! !INPUT PARAMETERS:
-   class (type_hzg_omexdia_p),intent(inout),target  :: self
+   class (type_hereon_omexdia_p),intent(inout),target  :: self
    integer,                   intent(in)            :: configunit
 !
 ! !REVISION HISTORY:
@@ -85,7 +85,7 @@
       real(rk) :: fdet_init,sdet_init,oxy_init,odu_init,no3_init,nh3_init
       real(rk) :: pdet_init,po4_init
 
-   namelist /hzg_omexdia_p/  rFast, rSlow, NCrFdet, NCrSdet, &
+   namelist /hereon_omexdia_p/  rFast, rSlow, NCrFdet, NCrSdet, &
           PCrFdet, PCrSdet, PAds, PAdsODU, NH3Ads, rnit, ksO2nitri, &
           rODUox,ksO2oduox, ksO2oxic,ksNO3denit,kinO2denit,kinNO3anox, &
           kinO2anox,fdet_init,sdet_init,oxy_init,odu_init,no3_init,nh3_init, &
@@ -95,7 +95,7 @@
 !BOC
 
    ! Read the namelist
-   if (configunit>0) read(configunit,nml=hzg_omexdia_p,err=99,end=100)
+   if (configunit>0) read(configunit,nml=hereon_omexdia_p,err=99,end=100)
 
    ! Store parameter values in our own derived type
    self%rFast=rFast
@@ -164,9 +164,9 @@
 
    return
 
-99 call self%fatal_error('hzg_omexdia_p_initialize','Error reading namelist hzg_omexdia_p.')
+99 call self%fatal_error('hereon_omexdia_p_initialize','Error reading namelist hereon_omexdia_p.')
 
-100 call self%fatal_error('hzg_omexdia_p_initialize','Namelist hzg_omexdia_p was not found.')
+100 call self%fatal_error('hereon_omexdia_p_initialize','Namelist hereon_omexdia_p was not found.')
 
    end subroutine initialize
 !EOC
@@ -182,7 +182,7 @@
 ! !DESCRIPTION:
 !
 ! !INPUT PARAMETERS:
-   class (type_hzg_omexdia_p),intent(in) :: self
+   class (type_hereon_omexdia_p),intent(in) :: self
    _DECLARE_ARGUMENTS_DO_
 !
 ! !REVISION HISTORY:
@@ -270,5 +270,5 @@
    end subroutine do
 !EOC
 
-   end module fabm_hzg_omexdia_p
+   end module hereon_omexdia_p
 

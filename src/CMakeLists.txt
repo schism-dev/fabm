@@ -29,6 +29,7 @@ set(DEFAULT_INSTITUTES
     su           # Swansea University, United Kingdom
     uhh          # University of Hamburg, Germany
     vims         # Virginia Institute of Marine Science, USA
+    hereon       # Helmholtz-Zentrum Hereon, Germany
 )
 
 # Ensure FABM_INSTITUTES tracks the up-to-date DEFAULT_INSTITUTES list unless the user manually customized FABM_INSTITUTES.
