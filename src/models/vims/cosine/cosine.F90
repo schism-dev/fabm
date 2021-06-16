@@ -46,14 +46,15 @@ module vims_cosine
       type (type_state_variable_id) :: id_DOX, id_CO2,  id_ALK
 
       !dependence
-      type (type_dependency_id) :: id_temp,id_salt,id_PAR,id_dep,id_zr
+      type (type_dependency_id) :: id_temp,id_salt,id_dep,id_zr,id_Ke,id_PAR
+      type (type_surface_dependency_id) :: id_PAR0
      
       !dianostic
-      type (type_diagnostic_variable_id) :: id_PPR
+      type (type_diagnostic_variable_id) :: id_PPR, id_dPAR
 
       !model parameters
       integer  :: idapt,ico2s,iz2graze
-      real(rk) :: gmaxs1,gmaxs2,pis1,pis2,kno3s1,knh4s1,kpo4s1,kco2s1,kno3s2,knh4s2
+      real(rk) :: dts,gmaxs1,gmaxs2,pis1,pis2,kno3s1,knh4s1,kpo4s1,kco2s1,kno3s2,knh4s2
       real(rk) :: kpo4s2,kco2s2,ksio4s2,kns1,kns2,alpha1,alpha2,ak1,ak2,ak3,beta,gammas1,gammas2
       real(rk) :: beta1,beta2,kgz1,kgz2,rho1,rho2,rho3,gamma1,gamma2,gammaz,kex1,kex2,wss2,wsdn,wsdsi
       real(rk) :: si2n,p2n,o2no,o2nh,c2n,kox,kmdn1,kmdn2,kmdsi1,kmdsi2,gamman,TR,pco2a
@@ -63,6 +64,9 @@ module vims_cosine
       procedure :: initialize
       procedure :: do
       procedure :: do_ppdd
+      procedure :: do_column
+      procedure :: get_vertical_movement
+      procedure :: do_surface
    end type
 
 contains
@@ -97,6 +101,7 @@ contains
       !2). are converted here to values per second by specifying scale_factor=d_per_s.
       !--------------------------------------------------------
 
+      call self%get_parameter(self%dts,   'dts',   'seconds','time step of the model',default=120.0_rk)
       !phytoplankton
       call self%get_parameter(self%gmaxs1,'gmaxs1','day-1','maximum growth rate of small phytoplankton',default=3.0_rk)
       call self%get_parameter(self%gmaxs2,'gmaxs2','day-1','maximum growth rate of diatom',default=2.0_rk)
@@ -185,13 +190,19 @@ contains
 
       !diagnostic variables
       call self%register_diagnostic_variable(self%id_PPR,  'PPR', 'mmol m-3 d-1', 'gross primary production rate')
+      call self%register_diagnostic_variable(self%id_dPAR,  'dPAR',   'W m-2', 'photosynthetic_radiative_flux', &
+           & standard_variable=standard_variables%downwelling_photosynthetic_radiative_flux, source=source_do_column)
+      !call self%register_diagnostic_variable(self%id_Light,'Light', 'mmol m-3 d-1', 'gross primary production rate')
 
       ! Register environmental dependencies
       call self%register_dependency(self%id_temp, standard_variables%temperature)
       call self%register_dependency(self%id_salt, standard_variables%practical_salinity)
       call self%register_dependency(self%id_zr,   standard_variables%depth)
       call self%register_dependency(self%id_dep,  standard_variables%cell_thickness)
+      call self%register_dependency(self%id_Ke,   standard_variables%attenuation_coefficient_of_photosynthetic_radiative_flux)
       call self%register_dependency(self%id_PAR,  standard_variables%downwelling_photosynthetic_radiative_flux)
+
+      call self%register_dependency(self%id_PAR0, standard_variables%surface_downwelling_photosynthetic_radiative_flux)
 
       ! Let phytoplankton (including background concentration) and detritus contribute to light attentuation
       call self%add_to_aggregate_variable(standard_variables%attenuation_coefficient_of_photosynthetic_radiative_flux, self%ak1)
@@ -208,8 +219,9 @@ contains
 
       real(rk), parameter :: secs_pr_day = 86400.0_rk
       real(rk) :: NO3,SiO4,NH4,S1,S2,Z1,Z2,DN,DSi,PO4,DOX,CO2,ALK
-      real(rk) :: temp,salt,zr,dep,PAR,qcos(13),mS2,mZ1,mDN,mZ2
+      real(rk) :: temp,salt,zr,dep,PAR,qcos(13),mcos(13),mS2,mZ1,mDN,mZ2
       real(rk) :: rtmp
+      integer  :: i
 
       !for precalculation
       real(rk) :: fS1,fS2,bfNO3S1,bfNH4S1,bfNH4S2,bfNO3S2
@@ -282,6 +294,27 @@ contains
          bfNO3S2=pnh4s2*NO3/(self%kno3s2*rtmp)
          bfNH4S2=NH4/(self%knh4s2*rtmp)
 
+         !check nutrient concentrations
+         !if(NH4<=0.0_rk) then
+         !  bfNH4S1=0.0_rk
+         !  bfNH4S2=0.0_rk
+         !endif
+         !if(NO3<=0.0_rk) then
+         !  bfNO3S1=0.0_rk
+         !  bfNO3S2=0.0_rk
+         !endif
+         !if(PO4<=0.0_rk) then
+         !  fPO4S1=0.0_rk
+         !  fPO4S2=0.0_rk
+         !endif
+         !if(SiO4<=0.0_rk) then
+         !  fSiO4S2=0.0_rk
+         !endif
+         !if(CO2<=0.0_rk) then
+         !  fCO2S1=0.0_rk
+         !  fCO2S2=0.0_rk
+         !endif
+
          !final limitation
          if(self%ico2s==0) then
            fS1=min(bfNO3S1+bfNH4S1,fPO4S1)
@@ -290,7 +323,7 @@ contains
            fS1=min(bfNO3S1+bfNH4S1,fPO4S1,fCO2S1)
            fS2=min(bfNO3S2+bfNH4S2,fSiO4S2,fPO4S2,fCO2S2)
          endif
-       
+
          !adjustment for nitrogen limitation factors
          fNO3S1=fS1*bfNO3S1/(bfNO3S1+bfNH4S1+1.0e-6)
          fNH4S1=fS1*bfNH4S1/(bfNO3S1+bfNH4S1+1.0e-6)
@@ -329,12 +362,30 @@ contains
          NPS1=self%gmaxs1*fNO3S1*pih1*S1
          RPS1=self%gmaxs1*max(self%kns1*NH4/(self%knh4s1+NH4),fNH4S1*pih1)*S1
          MTS1=self%gammas1*S1
-         qcos(4)=NPS1+RPS1-GS1Z1-MTS1
 
          !S2
          NPS2=self%gmaxs2*fNO3S2*pih2*S2
          RPS2=self%gmaxs2*max(self%kns2*NH4/(self%knh4s2+NH4),fNH4S2*pih2)*S2
          MTS2=self%gammas2*S2
+
+         !check growth term  
+         if(NH4<(RPS1+RPS2)*self%dts/secs_pr_day) then
+           RPS1=0.0_rk; RPS2=0.0_rk
+         endif
+
+         if(NO3<(NPS1+NPS2)*self%dts/secs_pr_day) then
+           NPS1=0.0_rk; NPS2=0.0_rk
+         endif
+
+         if(SiO4<(RPS2+NPS2)*self%si2n*self%dts/secs_pr_day) then
+           RPS2=0.0_rk; NPS2=0.0_rk
+         endif
+
+         if(PO4<(RPS1+NPS1+RPS2+NPS2)*self%p2n*self%dts/secs_pr_day) then
+           RPS1=0.0_rk; NPS1=0.0_rk; RPS2=0.0_rk; NPS2=0.0_rk
+         endif
+
+         qcos(4)=NPS1+RPS1-GS1Z1-MTS1
          qcos(5)=NPS2+RPS2-GS2Z2-MTS2
 
          !Z1
@@ -381,24 +432,51 @@ contains
          !temperatue adjustl
          qcos=qcos*Tadjust
 
+         !change the units of reaction rates
+         qcos=qcos/secs_pr_day
+         
+         !set reaction rates to zero if corant number condition is violated
+         mcos(1)  = NO3  /self%dts
+         mcos(2)  = SiO4 /self%dts
+         mcos(3)  = NH4  /self%dts
+         mcos(4)  = S1   /self%dts
+         mcos(5)  = S2   /self%dts
+         mcos(6)  = Z1   /self%dts
+         mcos(7)  = Z2   /self%dts
+         mcos(8)  = DN   /self%dts
+         mcos(9)  = DSi  /self%dts
+         mcos(10) = PO4  /self%dts
+         mcos(11) = DOX  /self%dts
+         mcos(12) = CO2  /self%dts
+         mcos(13) = ALK  /self%dts
+
+         do i=1,13
+           if(qcos(i)+mcos(i)<0) then
+             qcos(i)=-mcos(i)
+           endif
+         enddo
+
          !bottom and surface fluxes (todo)
 
          !-----------------------------------------------------------------
          ! Set temporal derivatives
          !-----------------------------------------------------------------
-         _ADD_SOURCE_(self%id_NO3, qcos(1)/secs_pr_day)
-         _ADD_SOURCE_(self%id_SiO4,qcos(2)/secs_pr_day)
-         _ADD_SOURCE_(self%id_NH4, qcos(3)/secs_pr_day)
-         _ADD_SOURCE_(self%id_S1,  qcos(4)/secs_pr_day)
-         _ADD_SOURCE_(self%id_S2,  qcos(5)/secs_pr_day)
-         _ADD_SOURCE_(self%id_Z1,  qcos(6)/secs_pr_day)
-         _ADD_SOURCE_(self%id_Z2,  qcos(7)/secs_pr_day)
-         _ADD_SOURCE_(self%id_DN,  qcos(8)/secs_pr_day)
-         _ADD_SOURCE_(self%id_DSi, qcos(9)/secs_pr_day)
-         _ADD_SOURCE_(self%id_PO4, qcos(10)/secs_pr_day)
-         _ADD_SOURCE_(self%id_DOX, qcos(11)/secs_pr_day)
-         _ADD_SOURCE_(self%id_CO2, qcos(12)/secs_pr_day)
-         _ADD_SOURCE_(self%id_ALK, qcos(13)/secs_pr_day)
+         _ADD_SOURCE_(self%id_NO3, qcos(1))
+         _ADD_SOURCE_(self%id_SiO4,qcos(2))
+         _ADD_SOURCE_(self%id_NH4, qcos(3))
+         _ADD_SOURCE_(self%id_S1,  qcos(4))
+         _ADD_SOURCE_(self%id_S2,  qcos(5))
+         _ADD_SOURCE_(self%id_Z1,  qcos(6))
+         _ADD_SOURCE_(self%id_Z2,  qcos(7))
+         _ADD_SOURCE_(self%id_DN,  qcos(8))
+         _ADD_SOURCE_(self%id_DSi, qcos(9))
+         _ADD_SOURCE_(self%id_PO4, qcos(10))
+         _ADD_SOURCE_(self%id_DOX, qcos(11))
+         _ADD_SOURCE_(self%id_CO2, qcos(12))
+         _ADD_SOURCE_(self%id_ALK, qcos(13))
+
+         !set diagnostic variables
+         !_SET_DIAGNOSTIC_(self%id_Light,PAR)
 
       _LOOP_END_
    end subroutine do
@@ -427,5 +505,51 @@ contains
 
       _LOOP_END_
    end subroutine do_ppdd
+
+   subroutine do_column(self, _ARGUMENTS_DO_COLUMN_)
+      class (type_vims_cosine), intent(in) :: self
+      _DECLARE_ARGUMENTS_DO_COLUMN_
+
+      real(rk) :: dep,Ke,PAR0,PAR,dPAR
+      real(rk) :: tPAR
+
+      _GET_SURFACE_(self%id_PAR0,PAR0)
+      tPAR=PAR0
+
+      _DOWNWARD_LOOP_BEGIN_
+         _GET_(self%id_dep,dep)     ! Layer height (m)
+         _GET_(self%id_Ke,Ke)       ! PAR attenuation (m-1)
+ 
+         !compute PAR at layer center and layer bottom
+         dPAR=tPAR*exp(-Ke*dep/2.0_rk)
+         tPAR=tPAR*exp(-Ke*dep)
+
+         _SET_DIAGNOSTIC_(self%id_dPAR,dPAR) ! Photosynthetically active radiation at layer centre
+      _DOWNWARD_LOOP_END_
+   end subroutine do_column
+
+   subroutine get_vertical_movement(self, _ARGUMENTS_GET_VERTICAL_MOVEMENT_)
+      class (type_vims_cosine), intent(in) :: self
+      _DECLARE_ARGUMENTS_GET_VERTICAL_MOVEMENT_
+
+      real(rk), parameter :: s2d = 1.0_rk / 86400.0_rk
+      real(rk) :: tmp
+   
+      _LOOP_BEGIN_
+        _ADD_VERTICAL_VELOCITY_(self%id_S2,  -self%wss2*s2d)
+        _ADD_VERTICAL_VELOCITY_(self%id_DN,  -self%wsdn*s2d)
+        _ADD_VERTICAL_VELOCITY_(self%id_DSi, -self%wsdsi*s2d)
+      _LOOP_END_
+   end subroutine get_vertical_movement
+
+   subroutine do_surface(self, _ARGUMENTS_DO_SURFACE_)
+      class (type_vims_cosine), intent(in) :: self
+      _DECLARE_ARGUMENTS_DO_SURFACE_
+   
+      _SURFACE_LOOP_BEGIN_
+
+       _ADD_SURFACE_FLUX_(self%id_DOX,-10.0_rk/86400.0_rk)
+      _SURFACE_LOOP_END_
+   end subroutine do_surface
 
 end module vims_cosine
