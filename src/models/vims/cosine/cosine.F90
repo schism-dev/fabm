@@ -33,6 +33,7 @@
 module vims_cosine
 
    use fabm_types
+   use fabm_cosine_misc
 
    implicit none
 
@@ -47,7 +48,7 @@ module vims_cosine
 
       !dependence
       type (type_dependency_id) :: id_temp,id_salt,id_dep,id_zr,id_Ke,id_PAR
-      type (type_surface_dependency_id) :: id_PAR0
+      type (type_surface_dependency_id) :: id_PAR0,id_Uw
      
       !dianostic
       type (type_diagnostic_variable_id) :: id_PPR, id_dPAR
@@ -203,6 +204,7 @@ contains
       call self%register_dependency(self%id_PAR,  standard_variables%downwelling_photosynthetic_radiative_flux)
 
       call self%register_dependency(self%id_PAR0, standard_variables%surface_downwelling_photosynthetic_radiative_flux)
+      call self%register_dependency(self%id_Uw,   standard_variables%wind_speed)
 
       ! Let phytoplankton (including background concentration) and detritus contribute to light attentuation
       call self%add_to_aggregate_variable(standard_variables%attenuation_coefficient_of_photosynthetic_radiative_flux, self%ak1)
@@ -532,23 +534,44 @@ contains
       class (type_vims_cosine), intent(in) :: self
       _DECLARE_ARGUMENTS_GET_VERTICAL_MOVEMENT_
 
-      real(rk), parameter :: s2d = 1.0_rk / 86400.0_rk
+      real(rk), parameter :: secs_pr_day = 86400.0_rk
       real(rk) :: tmp
    
       _LOOP_BEGIN_
-        _ADD_VERTICAL_VELOCITY_(self%id_S2,  -self%wss2*s2d)
-        _ADD_VERTICAL_VELOCITY_(self%id_DN,  -self%wsdn*s2d)
-        _ADD_VERTICAL_VELOCITY_(self%id_DSi, -self%wsdsi*s2d)
+        _ADD_VERTICAL_VELOCITY_(self%id_S2,  -self%wss2/secs_pr_day)
+        _ADD_VERTICAL_VELOCITY_(self%id_DN,  -self%wsdn/secs_pr_day)
+        _ADD_VERTICAL_VELOCITY_(self%id_DSi, -self%wsdsi/secs_pr_day)
       _LOOP_END_
    end subroutine get_vertical_movement
 
    subroutine do_surface(self, _ARGUMENTS_DO_SURFACE_)
       class (type_vims_cosine), intent(in) :: self
       _DECLARE_ARGUMENTS_DO_SURFACE_
+
+      !local variables
+      real(rk), parameter :: secs_pr_day = 86400.0_rk
+      real(rk) :: temp,salt,DOX,CO2,SiO4,PO4,ALK,Uw
+      real(rk) :: rat,ph,o2flx,co2flx
    
       _SURFACE_LOOP_BEGIN_
+         _GET_(self%id_temp,temp)
+         _GET_(self%id_salt,salt)
+         _GET_(self%id_DOX, DOX)
+         _GET_(self%id_CO2, CO2)
+         _GET_(self%id_SiO4,SiO4)
+         _GET_(self%id_PO4, PO4)
+         _GET_(self%id_ALK, ALK)
+         _GET_SURFACE_(self%id_Uw,Uw)
 
-       _ADD_SURFACE_FLUX_(self%id_DOX,-10.0_rk/86400.0_rk)
+         !for O2 air-sea exchange
+         call o2flux(o2flx,temp,salt,DOX,Uw)
+         _ADD_SURFACE_FLUX_(self%id_DOX,o2flx/secs_pr_day)
+
+         !for CO2 air-sea exchange
+         rat=1.e-6_rk
+         call co2flux(2,ph,co2flx,temp,salt,CO2*rat,SiO4*rat,PO4*rat, ALK*rat,self%pco2a,Uw)
+         _ADD_SURFACE_FLUX_(self%id_CO2,co2flx/secs_pr_day)
+
       _SURFACE_LOOP_END_
    end subroutine do_surface
 
