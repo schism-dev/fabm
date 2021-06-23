@@ -46,6 +46,9 @@ module vims_cosine
       type (type_state_variable_id) :: id_DN,  id_DSi,  id_PO4
       type (type_state_variable_id) :: id_DOX, id_CO2,  id_ALK
 
+      type (type_bottom_state_variable_id) :: id_PS21,id_PS22,id_PDN1,id_PDN2,id_PDSi
+      type (type_bottom_state_variable_id) :: id_RS21,id_RS22,id_RDN1,id_RDN2,id_RDSi
+
       !dependence
       type (type_dependency_id) :: id_temp,id_salt,id_dep,id_zr,id_Ke,id_PAR
       type (type_surface_dependency_id) :: id_PAR0,id_Uw
@@ -60,6 +63,7 @@ module vims_cosine
       real(rk) :: beta1,beta2,kgz1,kgz2,rho1,rho2,rho3,gamma1,gamma2,gammaz,kex1,kex2,wss2,wsdn,wsdsi
       real(rk) :: si2n,p2n,o2no,o2nh,c2n,kox,kmdn1,kmdn2,kmdsi1,kmdsi2,gamman,TR,pco2a
       real(rk) :: alpha_corr,zeptic,ndelay,rdelay
+      real(rk) :: fS21,fS22,fDN1,fDN2,fDSi,rkS21,rkS22,rkDN1,rkDN2,rkDSi,mS21,mS22,mDN1,mDN2,mDSi
 
    contains
       procedure :: initialize
@@ -68,6 +72,7 @@ module vims_cosine
       procedure :: do_column
       procedure :: get_vertical_movement
       procedure :: do_surface
+      procedure :: do_bottom
    end type
 
 contains
@@ -95,6 +100,19 @@ contains
       call self%register_state_variable(self%id_DOX, 'DOX', 'mmol m-3','Dissolved Oxygen', 280.0_rk, minimum=0.0_rk,no_river_dilution=.true.)
       call self%register_state_variable(self%id_CO2, 'CO2', 'mmol m-3','Carbon Dioxide',  1950.0_rk, minimum=0.0_rk,no_river_dilution=.true.)
       call self%register_state_variable(self%id_ALK, 'ALK', 'meq m-3', 'Carbon Dioxide',  2100.0_rk, minimum=0.0_rk,no_river_dilution=.true.)
+
+      !for sediment module
+      call self%register_state_variable(self%id_PS21, 'PS21', 'mmol m-2','Sediment S2 Conc. G1', 1.e1_rk, minimum=0.0_rk)
+      call self%register_state_variable(self%id_PS22, 'PS22', 'mmol m-2','Sediment S2 Conc. G2', 1.e1_rk, minimum=0.0_rk)
+      call self%register_state_variable(self%id_PDN1, 'PDN1', 'mmol m-2','Sediment DN Conc. G1', 1.e1_rk, minimum=0.0_rk)
+      call self%register_state_variable(self%id_PDN2, 'PDN2', 'mmol m-2','Sediment DN Conc. G2', 1.e1_rk, minimum=0.0_rk)
+      call self%register_state_variable(self%id_PDSi, 'PDSi', 'mmol m-2','Sediment DSi Conc.',   1.e1_rk, minimum=0.0_rk)
+
+      call self%register_state_variable(self%id_RS21, 'RS21', 'day-1','Sediment S2 decay rate',  0.1_rk,  minimum=0.0_rk,maximum=0.1_rk)
+      call self%register_state_variable(self%id_RS22, 'RS22', 'day-1','Sediment S2 decay rate',  0.01_rk, minimum=0.0_rk,maximum=0.01_rk)
+      call self%register_state_variable(self%id_RDN1, 'RDN1', 'day-1','Sediment DN decay rate',  0.1_rk,  minimum=0.0_rk,maximum=0.1_rk)
+      call self%register_state_variable(self%id_RDN2, 'RDN2', 'day-1','Sediment DN decay rate',  0.01_rk, minimum=0.0_rk,maximum=0.01_rk)
+      call self%register_state_variable(self%id_RDSi, 'RDSi', 'day-1','Sediment DSi decay rate', 0.1_rk,  minimum=0.0_rk,maximum=0.1_rk)
 
       !--------------------------------------------------------
       !Note: parameter values in our own derived type
@@ -179,7 +197,25 @@ contains
       call self%get_parameter(self%ico2s,'ico2s','none','flag for CO2 limitation on phytoplankton growth',default=0)
       call self%get_parameter(self%ndelay,'ndelay','day','number of days that mesozooplankton grazing is delayed',default=15.0_rk)
       call self%get_parameter(self%rdelay,'rdelay','none','relavative contribution of concentration at ndelay_th day',default=0.3_rk)
-   
+
+      call self%get_parameter(self%fS21, 'fS21','none','S2 G1 fraction into sediment ',default=0.1_rk)
+      call self%get_parameter(self%fS22, 'fS22','none','S2 G2 fraction into sediment ',default=0.1_rk)
+      call self%get_parameter(self%fDN1, 'fDN1','none','DN G1 fraction into sediment ',default=0.15_rk)
+      call self%get_parameter(self%fDN2, 'fDN2','none','DN G2 fraction into sediment ',default=0.1_rk)
+      call self%get_parameter(self%fDSi, 'fDSi','none','DSi fraction into sediment ',  default=1.0_rk)
+
+      call self%get_parameter(self%rkS21, 'rkS21','none','change rate of S2 G1 fraction',default=4e-3_rk)
+      call self%get_parameter(self%rkS22, 'rkS22','none','change rate of S2 G2 fraction',default=1e-4_rk)
+      call self%get_parameter(self%rkDN1, 'rkDN1','none','change rate of DN G1 fraction',default=4e-3_rk)
+      call self%get_parameter(self%rkDN2, 'rkDN2','none','change rate of DN G2 fraction',default=1e-4_rk)
+      call self%get_parameter(self%rkDSi, 'rkDSi','none','change rate of DSi   fraction',default=4e-3_rk)
+
+      call self%get_parameter(self%rkS21, 'mS21','none','maximum decay rate of S2 G1 fraction',default=0.1_rk)
+      call self%get_parameter(self%rkS22, 'mS22','none','maximum decay rate of S2 G2 fraction',default=0.01_rk)
+      call self%get_parameter(self%rkDN1, 'mDN1','none','maximum decay rate of DN G1 fraction',default=0.1_rk)
+      call self%get_parameter(self%rkDN2, 'mDN2','none','maximum decay rate of DN G2 fraction',default=0.01_rk)
+      call self%get_parameter(self%rkDSi, 'mDSi','none','maximum decay rate of DSi   fraction',default=0.1_rk)
+
       !--------------------------------------------------------
       ! Register the contribution of all state variables to total nitrogen
       !--------------------------------------------------------
@@ -191,7 +227,7 @@ contains
 
       !diagnostic variables
       call self%register_diagnostic_variable(self%id_PPR,  'PPR', 'mmol m-3 d-1', 'gross primary production rate')
-      call self%register_diagnostic_variable(self%id_dPAR,  'dPAR',   'W m-2', 'photosynthetic_radiative_flux', &
+      call self%register_diagnostic_variable(self%id_dPAR, 'dPAR','W m-2', 'photosynthetic_radiative_flux', missing_value=0.0_rk,&
            & standard_variable=standard_variables%downwelling_photosynthetic_radiative_flux, source=source_do_column)
       !call self%register_diagnostic_variable(self%id_Light,'Light', 'mmol m-3 d-1', 'gross primary production rate')
 
@@ -219,7 +255,7 @@ contains
       class (type_vims_cosine), intent(in) :: self
       _DECLARE_ARGUMENTS_DO_
 
-      real(rk), parameter :: secs_pr_day = 86400.0_rk
+      real(rk), parameter :: secs_pr_day = 86400.0_rk, mval=1e-10_rk
       real(rk) :: NO3,SiO4,NH4,S1,S2,Z1,Z2,DN,DSi,PO4,DOX,CO2,ALK
       real(rk) :: temp,salt,zr,dep,PAR,qcos(13),mcos(13),mS2,mZ1,mDN,mZ2
       real(rk) :: rtmp
@@ -273,8 +309,8 @@ contains
          !Light limitation factor including photo-inhibition and light adaptation
          ADPT=1.0_rk
          if (self%idapt==1) ADPT=self%alpha_corr*(1.0_rk-4.0_rk*zr)/self%zeptic
-         pih1=(1.0_rk-exp(-PAR*ADPT*self%alpha1/self%gmaxs1))*exp(-self%beta*PAR/self%gmaxs1)
-         pih2=(1.0_rk-exp(-PAR*ADPT*self%alpha2/self%gmaxs2))*exp(-self%beta*PAR/self%gmaxs2)
+         pih1=(1.0_rk-exp(-PAR*ADPT*self%alpha1/max(self%gmaxs1,mval)))*exp(-self%beta*PAR/max(self%gmaxs1,mval))
+         pih2=(1.0_rk-exp(-PAR*ADPT*self%alpha2/max(self%gmaxs2,mval)))*exp(-self%beta*PAR/max(self%gmaxs2,mval))
 
          !NH4 inhibition 
          pnh4s1=min(1.0_rk,exp(-self%pis1*NH4))
@@ -574,5 +610,65 @@ contains
 
       _SURFACE_LOOP_END_
    end subroutine do_surface
+
+   subroutine do_bottom(self, _ARGUMENTS_DO_BOTTOM_)
+      !reflective sediment flux model with accumulative POM and variable decay rate
+      class (type_vims_cosine),intent(in) :: self
+      _DECLARE_ARGUMENTS_DO_BOTTOM_
+      real(rk), parameter :: secs_pr_day = 86400.0_rk
+      real(rk) :: S2,DN,DSi
+      real(rk) :: FS21,FS22,FDN1,FDN2,FDSi,JS21,JS22,JDN1,JDN2,JDSi  !depositional fluxes, and diagenesis fluxes
+      real(rk) :: PS21,PS22,PDN1,PDN2,PDSi,RS21,RS22,RDN1,RDN2,RDSi  !sediment POM conc., and decay rate
+      real(rk) :: nh4flx,sio4flx,po4flx,co2flx,o2flx                 !sediment nutrient fluxes
+   
+      _BOTTOM_LOOP_BEGIN_
+         _GET_(self%id_S2, S2)
+         _GET_(self%id_DN, DN)
+         _GET_(self%id_DSi,DSi)
+         _GET_BOTTOM_(self%id_PS21, PS21)
+         _GET_BOTTOM_(self%id_PS22, PS22)
+         _GET_BOTTOM_(self%id_PDN1, PDN1)
+         _GET_BOTTOM_(self%id_PDN2, PDN2)
+         _GET_BOTTOM_(self%id_PDSi, PDSi)
+         _GET_BOTTOM_(self%id_RS21, RS21)
+         _GET_BOTTOM_(self%id_RS22, RS22)
+         _GET_BOTTOM_(self%id_RDN1, RDN1)
+         _GET_BOTTOM_(self%id_RDN2, RDN2)
+         _GET_BOTTOM_(self%id_RDSi, RDSi)
+
+         !depositional fluxes, and diagensis fluxes
+         FS21=self%wss2*S2*self%fS21;   JS21=RS21*PS21
+         FS22=self%wss2*S2*self%fS22;   JS22=RS22*PS22
+         FDN1=self%wsdn*DN*self%fDN1;   JDN1=RDN1*PDN1
+         FDN2=self%wsdn*DN*self%fDN2;   JDN2=RDN2*PDN2
+         FDSi=self%wsdsi*DSi*self%fDSi; JDSi=RDSi*PDSi
+
+         !sediment nutrient fluxes
+         nh4flx=JS21+JS22+JDN1+JDN2
+         sio4flx=self%si2n*(JS21+JS22)+JDSi
+         po4flx =self%p2n*(JS21+JS22+JDN1+JDN2+JDSi/self%si2n)
+         co2flx=self%c2n*nh4flx; o2flx=self%o2nh*nh4flx
+      
+         !reaction rates
+         _ADD_BOTTOM_SOURCE_(self%id_PS21,(FS21-JS21)/secs_pr_day)
+         _ADD_BOTTOM_SOURCE_(self%id_PS22,(FS22-JS22)/secs_pr_day)
+         _ADD_BOTTOM_SOURCE_(self%id_PDN1,(FDN1-JDN1)/secs_pr_day)
+         _ADD_BOTTOM_SOURCE_(self%id_PDN2,(FDN2-JDN2)/secs_pr_day)
+         _ADD_BOTTOM_SOURCE_(self%id_PDSi,(FDSi-JDSi)/secs_pr_day)
+
+         _ADD_BOTTOM_SOURCE_(self%id_RS21,(self%rkS21-RS21*FS21/PS21)/secs_pr_day)
+         _ADD_BOTTOM_SOURCE_(self%id_RS22,(self%rkS22-RS22*FS22/PS22)/secs_pr_day)
+         _ADD_BOTTOM_SOURCE_(self%id_RDN1,(self%rkDN1-RDN1*FDN1/PDN1)/secs_pr_day)
+         _ADD_BOTTOM_SOURCE_(self%id_RDN2,(self%rkDN2-RDN2*FDN2/PDN2)/secs_pr_day)
+         _ADD_BOTTOM_SOURCE_(self%id_RDSi,(self%rkDSi-RDSi*FDSi/PDSi)/secs_pr_day)
+
+         _ADD_BOTTOM_FLUX_(self%id_SiO4,sio4flx/secs_pr_day)
+         _ADD_BOTTOM_FLUX_(self%id_NH4, nh4flx/secs_pr_day)
+         _ADD_BOTTOM_FLUX_(self%id_PO4, po4flx/secs_pr_day)
+         _ADD_BOTTOM_FLUX_(self%id_DOX, o2flx/secs_pr_day)
+         _ADD_BOTTOM_FLUX_(self%id_CO2, co2flx/secs_pr_day)
+        
+      _BOTTOM_LOOP_END_
+   end subroutine do_bottom
 
 end module vims_cosine
