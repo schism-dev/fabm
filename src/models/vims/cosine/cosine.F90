@@ -494,8 +494,6 @@ contains
            endif
          enddo
 
-         !bottom and surface fluxes (todo)
-
          !-----------------------------------------------------------------
          ! Set temporal derivatives
          !-----------------------------------------------------------------
@@ -647,7 +645,7 @@ contains
          nh4flx=JS21+JS22+JDN1+JDN2
          sio4flx=self%si2n*(JS21+JS22)+JDSi
          po4flx =self%p2n*(JS21+JS22+JDN1+JDN2+JDSi/self%si2n)
-         co2flx=self%c2n*nh4flx; o2flx=self%o2nh*nh4flx
+         co2flx=self%c2n*nh4flx; o2flx=-self%o2nh*nh4flx
       
          !reaction rates
          _ADD_BOTTOM_SOURCE_(self%id_PS21,(FS21-JS21)/secs_pr_day)
