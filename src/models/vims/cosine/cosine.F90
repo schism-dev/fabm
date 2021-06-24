@@ -50,11 +50,12 @@ module vims_cosine
       type (type_bottom_state_variable_id) :: id_RS21,id_RS22,id_RDN1,id_RDN2,id_RDSi
 
       !dependence
-      type (type_dependency_id) :: id_temp,id_salt,id_dep,id_zr,id_Ke,id_PAR
+      type (type_dependency_id) :: id_temp,id_salt,id_dep,id_zr,id_Ke,id_PAR,id_SPM
       type (type_surface_dependency_id) :: id_PAR0,id_Uw
      
       !dianostic
       type (type_diagnostic_variable_id) :: id_PPR, id_dPAR
+      type (type_surface_diagnostic_variable_id) :: id_stmp
 
       !model parameters
       integer  :: idapt,ico2s,iz2graze
@@ -63,7 +64,7 @@ module vims_cosine
       real(rk) :: beta1,beta2,kgz1,kgz2,rho1,rho2,rho3,gamma1,gamma2,gammaz,kex1,kex2,wss2,wsdn,wsdsi
       real(rk) :: si2n,p2n,o2no,o2nh,c2n,kox,kmdn1,kmdn2,kmdsi1,kmdsi2,gamman,TR,pco2a
       real(rk) :: alpha_corr,zeptic,ndelay,rdelay
-      real(rk) :: fS21,fS22,fDN1,fDN2,fDSi,rkS21,rkS22,rkDN1,rkDN2,rkDSi,mS21,mS22,mDN1,mDN2,mDSi
+      real(rk) :: fS21,fS22,fDN1,fDN2,fDSi,rkS21,rkS22,rkDN1,rkDN2,rkDSi,mkS21,mkS22,mkDN1,mkDN2,mkDSi
 
    contains
       procedure :: initialize
@@ -210,11 +211,11 @@ contains
       call self%get_parameter(self%rkDN2, 'rkDN2','none','change rate of DN G2 fraction',default=1e-4_rk)
       call self%get_parameter(self%rkDSi, 'rkDSi','none','change rate of DSi   fraction',default=4e-3_rk)
 
-      call self%get_parameter(self%rkS21, 'mS21','none','maximum decay rate of S2 G1 fraction',default=0.1_rk)
-      call self%get_parameter(self%rkS22, 'mS22','none','maximum decay rate of S2 G2 fraction',default=0.01_rk)
-      call self%get_parameter(self%rkDN1, 'mDN1','none','maximum decay rate of DN G1 fraction',default=0.1_rk)
-      call self%get_parameter(self%rkDN2, 'mDN2','none','maximum decay rate of DN G2 fraction',default=0.01_rk)
-      call self%get_parameter(self%rkDSi, 'mDSi','none','maximum decay rate of DSi   fraction',default=0.1_rk)
+      call self%get_parameter(self%mkS21, 'mkS21','none','maximum decay rate of S2 G1 fraction',default=0.1_rk)
+      call self%get_parameter(self%mkS22, 'mkS22','none','maximum decay rate of S2 G2 fraction',default=0.01_rk)
+      call self%get_parameter(self%mkDN1, 'mkDN1','none','maximum decay rate of DN G1 fraction',default=0.1_rk)
+      call self%get_parameter(self%mkDN2, 'mkDN2','none','maximum decay rate of DN G2 fraction',default=0.01_rk)
+      call self%get_parameter(self%mkDSi, 'mkDSi','none','maximum decay rate of DSi   fraction',default=0.1_rk)
 
       !--------------------------------------------------------
       ! Register the contribution of all state variables to total nitrogen
@@ -229,7 +230,7 @@ contains
       call self%register_diagnostic_variable(self%id_PPR,  'PPR', 'mmol m-3 d-1', 'gross primary production rate')
       call self%register_diagnostic_variable(self%id_dPAR, 'dPAR','W m-2', 'photosynthetic_radiative_flux', missing_value=0.0_rk,&
            & standard_variable=standard_variables%downwelling_photosynthetic_radiative_flux, source=source_do_column)
-      !call self%register_diagnostic_variable(self%id_Light,'Light', 'mmol m-3 d-1', 'gross primary production rate')
+      call self%register_diagnostic_variable(self%id_stmp, 'stmp','none', 'temporary variables used to diagnostic surface variables values')
 
       ! Register environmental dependencies
       call self%register_dependency(self%id_temp, standard_variables%temperature)
@@ -238,6 +239,7 @@ contains
       call self%register_dependency(self%id_dep,  standard_variables%cell_thickness)
       call self%register_dependency(self%id_Ke,   standard_variables%attenuation_coefficient_of_photosynthetic_radiative_flux)
       call self%register_dependency(self%id_PAR,  standard_variables%downwelling_photosynthetic_radiative_flux)
+      call self%register_dependency(self%id_SPM,  standard_variables%mass_concentration_of_suspended_matter)
 
       call self%register_dependency(self%id_PAR0, standard_variables%surface_downwelling_photosynthetic_radiative_flux)
       call self%register_dependency(self%id_Uw,   standard_variables%wind_speed)
@@ -246,6 +248,7 @@ contains
       call self%add_to_aggregate_variable(standard_variables%attenuation_coefficient_of_photosynthetic_radiative_flux, self%ak1)
       call self%add_to_aggregate_variable(standard_variables%attenuation_coefficient_of_photosynthetic_radiative_flux, self%id_S1, scale_factor=self%ak2)
       call self%add_to_aggregate_variable(standard_variables%attenuation_coefficient_of_photosynthetic_radiative_flux, self%id_S2, scale_factor=self%ak2)
+      call self%add_to_aggregate_variable(standard_variables%attenuation_coefficient_of_photosynthetic_radiative_flux, self%id_SPM, scale_factor=self%ak3)
       !constant SPM (todo: need add a varibles, check model%prepare_inputs() function )
       !call self%add_to_aggregate_variable(standard_variables%attenuation_coefficient_of_photosynthetic_radiative_flux, 20.0_rk, scale_factor=self%ak3)
 
@@ -331,27 +334,6 @@ contains
          rtmp=1.0_rk+NH4/self%knh4s2+pnh4s2*NO3/self%kno3s2
          bfNO3S2=pnh4s2*NO3/(self%kno3s2*rtmp)
          bfNH4S2=NH4/(self%knh4s2*rtmp)
-
-         !check nutrient concentrations
-         !if(NH4<=0.0_rk) then
-         !  bfNH4S1=0.0_rk
-         !  bfNH4S2=0.0_rk
-         !endif
-         !if(NO3<=0.0_rk) then
-         !  bfNO3S1=0.0_rk
-         !  bfNO3S2=0.0_rk
-         !endif
-         !if(PO4<=0.0_rk) then
-         !  fPO4S1=0.0_rk
-         !  fPO4S2=0.0_rk
-         !endif
-         !if(SiO4<=0.0_rk) then
-         !  fSiO4S2=0.0_rk
-         !endif
-         !if(CO2<=0.0_rk) then
-         !  fCO2S1=0.0_rk
-         !  fCO2S2=0.0_rk
-         !endif
 
          !final limitation
          if(self%ico2s==0) then
@@ -456,7 +438,8 @@ contains
          qcos(2)=-(NPS2+RPS2)*self%si2n+MIDSi
 
          !PO4
-         qcos(10)=(EXZ1+EXZ2+MIDN+MIDSi/self%si2n-NPS1-RPS1-NPS2-RPS2)*self%p2n
+         qcos(10)=(EXZ1+EXZ2+MIDN-NPS1-RPS1-NPS2-RPS2)*self%p2n
+         !qcos(10)=qcos(10)+MIDSi*self%p2n/self%si2n
 
          !DOX       
          qcos(11)=(NPS1+NPS2)*self%o2no+(RPS1+RPS2-EXZ1-EXZ2-MIDN)*self%o2nh-2.0_rk*Nit
@@ -606,6 +589,9 @@ contains
          call co2flux(2,ph,co2flx,temp,salt,CO2*rat,SiO4*rat,PO4*rat, ALK*rat,self%pco2a,Uw)
          _ADD_SURFACE_FLUX_(self%id_CO2,co2flx/secs_pr_day)
 
+         !set diagnostic variable 
+         !_SET_SURFACE_DIAGNOSTIC_(self%id_stmp,co2flx)
+
       _SURFACE_LOOP_END_
    end subroutine do_surface
 
@@ -644,7 +630,8 @@ contains
          !sediment nutrient fluxes
          nh4flx=JS21+JS22+JDN1+JDN2
          sio4flx=self%si2n*(JS21+JS22)+JDSi
-         po4flx =self%p2n*(JS21+JS22+JDN1+JDN2+JDSi/self%si2n)
+         po4flx =self%p2n*(JS21+JS22+JDN1+JDN2)
+         !po4flx =po4flx+self%p2n*JDSi/self%si2n
          co2flx=self%c2n*nh4flx; o2flx=-self%o2nh*nh4flx
       
          !reaction rates
