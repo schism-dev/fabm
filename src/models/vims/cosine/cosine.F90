@@ -58,12 +58,12 @@ module vims_cosine
       type (type_surface_diagnostic_variable_id) :: id_stmp
 
       !model parameters
-      integer  :: idapt,ico2s,iz2graze
+      integer  :: idapt,ico2s,iz2graze,ispm
       real(rk) :: dts,gmaxs1,gmaxs2,pis1,pis2,kno3s1,knh4s1,kpo4s1,kco2s1,kno3s2,knh4s2
       real(rk) :: kpo4s2,kco2s2,ksio4s2,kns1,kns2,alpha1,alpha2,ak1,ak2,ak3,beta,gammas1,gammas2
       real(rk) :: beta1,beta2,kgz1,kgz2,rho1,rho2,rho3,gamma1,gamma2,gammaz,kex1,kex2,wss2,wsdn,wsdsi
       real(rk) :: si2n,p2n,o2no,o2nh,c2n,kox,kmdn1,kmdn2,kmdsi1,kmdsi2,gamman,TR,pco2a
-      real(rk) :: alpha_corr,zeptic,ndelay,rdelay
+      real(rk) :: alpha_corr,zeptic,ndelay,rdelay,spm0
       real(rk) :: fS21,fS22,fDN1,fDN2,fDSi,rkS21,rkS22,rkDN1,rkDN2,rkDSi,mkS21,mkS22,mkDN1,mkDN2,mkDSi
 
    contains
@@ -199,6 +199,9 @@ contains
       call self%get_parameter(self%ndelay,'ndelay','day','number of days that mesozooplankton grazing is delayed',default=15.0_rk)
       call self%get_parameter(self%rdelay,'rdelay','none','relavative contribution of concentration at ndelay_th day',default=0.3_rk)
 
+      call self%get_parameter(self%ispm,'ispm','none','flag for SPM specification',default=0)
+      call self%get_parameter(self%spm0,'spm0','mg/L','constant for SPM concentration for ispm=0',default=10.0_rk)
+
       call self%get_parameter(self%fS21, 'fS21','none','S2 G1 fraction into sediment ',default=0.1_rk)
       call self%get_parameter(self%fS22, 'fS22','none','S2 G2 fraction into sediment ',default=0.1_rk)
       call self%get_parameter(self%fDN1, 'fDN1','none','DN G1 fraction into sediment ',default=0.15_rk)
@@ -248,7 +251,7 @@ contains
       call self%add_to_aggregate_variable(standard_variables%attenuation_coefficient_of_photosynthetic_radiative_flux, self%ak1)
       call self%add_to_aggregate_variable(standard_variables%attenuation_coefficient_of_photosynthetic_radiative_flux, self%id_S1, scale_factor=self%ak2)
       call self%add_to_aggregate_variable(standard_variables%attenuation_coefficient_of_photosynthetic_radiative_flux, self%id_S2, scale_factor=self%ak2)
-      call self%add_to_aggregate_variable(standard_variables%attenuation_coefficient_of_photosynthetic_radiative_flux, self%id_SPM, scale_factor=self%ak3)
+      call self%add_to_aggregate_variable(standard_variables%attenuation_coefficient_of_photosynthetic_radiative_flux, self%id_SPM, scale_factor=1000.0_rk*self%ak3)
       !constant SPM (todo: need add a varibles, check model%prepare_inputs() function )
       !call self%add_to_aggregate_variable(standard_variables%attenuation_coefficient_of_photosynthetic_radiative_flux, 20.0_rk, scale_factor=self%ak3)
 
