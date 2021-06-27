@@ -54,13 +54,15 @@ module vims_cosine
       type (type_surface_dependency_id) :: id_PAR0,id_Uw
      
       !dianostic
-      type (type_diagnostic_variable_id) :: id_PPR, id_dPAR
+      type (type_diagnostic_variable_id) :: id_dPAR
       type (type_surface_diagnostic_variable_id) :: id_stmp
+      type (type_bottom_diagnostic_variable_id)  :: id_bTN
 
-      !type (type_diagnostic_variable_id) :: id_NPS1,id_RPS1,id_MTS1,id_GS1Z1
-      !type (type_diagnostic_variable_id) :: id_NPS2,id_RPS2,id_MTS2,id_GS2Z2
-      !type (type_diagnostic_variable_id) :: id_EXZ1,id_MTZ1,id_EXZ2,id_MTZ2
-      !type (type_diagnostic_variable_id) :: id_MIDN,id_Nit,id_GDNZ2,id_GZ1Z2,id_GTZ2
+      type (type_diagnostic_variable_id) :: id_TN,id_PPR
+      type (type_diagnostic_variable_id) :: id_NPS1,id_RPS1,id_MTS1,id_GS1Z1
+      type (type_diagnostic_variable_id) :: id_NPS2,id_RPS2,id_MTS2,id_GS2Z2
+      type (type_diagnostic_variable_id) :: id_EXZ1,id_MTZ1,id_EXZ2,id_MTZ2
+      type (type_diagnostic_variable_id) :: id_MIDN,id_Nit,id_GDNZ2,id_GZ1Z2,id_GTZ2
 
       !model parameters
       integer  :: idapt,ico2s,iz2graze,ispm
@@ -237,28 +239,30 @@ contains
       call self%add_to_aggregate_variable(standard_variables%total_nitrogen, self%id_DN)
 
       !diagnostic variables
-      call self%register_diagnostic_variable(self%id_PPR,  'PPR', 'mmol m-3 d-1', 'gross primary production rate')
       call self%register_diagnostic_variable(self%id_dPAR, 'dPAR','W m-2', 'photosynthetic_radiative_flux', missing_value=0.0_rk,&
            & standard_variable=standard_variables%downwelling_photosynthetic_radiative_flux, source=source_do_column)
-      call self%register_diagnostic_variable(self%id_stmp, 'stmp','none', 'temporary variables used to diagnostic surface variables values')
 
-      !call self%register_diagnostic_variable(self%id_NPS1,  'NPS1', 'mmol m-3 d-1', 'NPS1')
-      !call self%register_diagnostic_variable(self%id_RPS1,  'RPS1', 'mmol m-3 d-1', 'RPS1')
-      !call self%register_diagnostic_variable(self%id_MTS1,  'MTS1', 'mmol m-3 d-1', 'MTS1')
-      !call self%register_diagnostic_variable(self%id_GS1Z1, 'GS1Z1','mmol m-3 d-1', 'GS1Z1')
-      !call self%register_diagnostic_variable(self%id_EXZ1,  'EXZ1', 'mmol m-3 d-1', 'EXZ1')
-      !call self%register_diagnostic_variable(self%id_MTZ1,  'MTZ1', 'mmol m-3 d-1', 'MTZ1')
-      !call self%register_diagnostic_variable(self%id_NPS2,  'NPS2', 'mmol m-3 d-1', 'NPS2')
-      !call self%register_diagnostic_variable(self%id_RPS2,  'RPS2', 'mmol m-3 d-1', 'RPS2')
-      !call self%register_diagnostic_variable(self%id_MTS2,  'MTS2', 'mmol m-3 d-1', 'MTS2')
-      !call self%register_diagnostic_variable(self%id_GS2Z2, 'GS2Z2','mmol m-3 d-1', 'GS2Z2')
-      !call self%register_diagnostic_variable(self%id_EXZ2,  'EXZ2', 'mmol m-3 d-1', 'EXZ2')
-      !call self%register_diagnostic_variable(self%id_MTZ2,  'MTZ2', 'mmol m-3 d-1', 'MTZ2')
-      !call self%register_diagnostic_variable(self%id_MIDN,  'MIDN', 'mmol m-3 d-1', 'MIDN')
-      !call self%register_diagnostic_variable(self%id_Nit,   'Nit',  'mmol m-3 d-1', 'Nit')
-      !call self%register_diagnostic_variable(self%id_GDNZ2, 'GDNZ2','mmol m-3 d-1', 'GDNZ2')
-      !call self%register_diagnostic_variable(self%id_GZ1Z2, 'GZ1Z2','mmol m-3 d-1', 'GZ1Z2')
-      !call self%register_diagnostic_variable(self%id_GTZ2,  'GTZ2', 'mmol m-3 d-1', 'GTZ2')
+      call self%register_diagnostic_variable(self%id_stmp,  'stmp', 'none',         'temporary variables',    output=output_none)
+      call self%register_diagnostic_variable(self%id_PPR,   'PPR',  'mmol m-3 d-1', 'primary production rate',output=output_none)
+      call self%register_diagnostic_variable(self%id_bTN,   'bTN',  'mmol m-2',     'bTN',  output=output_none)
+      call self%register_diagnostic_variable(self%id_TN,    'TN',   'mmol m-3',     'TN',   output=output_none)
+      call self%register_diagnostic_variable(self%id_NPS1,  'NPS1', 'mmol m-3 d-1', 'NPS1', output=output_none)
+      call self%register_diagnostic_variable(self%id_RPS1,  'RPS1', 'mmol m-3 d-1', 'RPS1', output=output_none)
+      call self%register_diagnostic_variable(self%id_MTS1,  'MTS1', 'mmol m-3 d-1', 'MTS1', output=output_none)
+      call self%register_diagnostic_variable(self%id_GS1Z1, 'GS1Z1','mmol m-3 d-1', 'GS1Z1',output=output_none)
+      call self%register_diagnostic_variable(self%id_EXZ1,  'EXZ1', 'mmol m-3 d-1', 'EXZ1', output=output_none)
+      call self%register_diagnostic_variable(self%id_MTZ1,  'MTZ1', 'mmol m-3 d-1', 'MTZ1', output=output_none)
+      call self%register_diagnostic_variable(self%id_NPS2,  'NPS2', 'mmol m-3 d-1', 'NPS2', output=output_none)
+      call self%register_diagnostic_variable(self%id_RPS2,  'RPS2', 'mmol m-3 d-1', 'RPS2', output=output_none)
+      call self%register_diagnostic_variable(self%id_MTS2,  'MTS2', 'mmol m-3 d-1', 'MTS2', output=output_none)
+      call self%register_diagnostic_variable(self%id_GS2Z2, 'GS2Z2','mmol m-3 d-1', 'GS2Z2',output=output_none)
+      call self%register_diagnostic_variable(self%id_EXZ2,  'EXZ2', 'mmol m-3 d-1', 'EXZ2', output=output_none)
+      call self%register_diagnostic_variable(self%id_MTZ2,  'MTZ2', 'mmol m-3 d-1', 'MTZ2', output=output_none)
+      call self%register_diagnostic_variable(self%id_MIDN,  'MIDN', 'mmol m-3 d-1', 'MIDN', output=output_none)
+      call self%register_diagnostic_variable(self%id_Nit,   'Nit',  'mmol m-3 d-1', 'Nit',  output=output_none)
+      call self%register_diagnostic_variable(self%id_GDNZ2, 'GDNZ2','mmol m-3 d-1', 'GDNZ2',output=output_none)
+      call self%register_diagnostic_variable(self%id_GZ1Z2, 'GZ1Z2','mmol m-3 d-1', 'GZ1Z2',output=output_none)
+      call self%register_diagnostic_variable(self%id_GTZ2,  'GTZ2', 'mmol m-3 d-1', 'GTZ2', output=output_none)
 
       ! Register environmental dependencies
       call self%register_dependency(self%id_temp, standard_variables%temperature)
@@ -524,23 +528,24 @@ contains
 
          !set diagnostic variables
          !_SET_DIAGNOSTIC_(self%id_Light,PAR)
-         !_SET_DIAGNOSTIC_(self%id_NPS1, NPS1)
-         !_SET_DIAGNOSTIC_(self%id_RPS1, RPS1)
-         !_SET_DIAGNOSTIC_(self%id_MTS1, MTS1)
-         !_SET_DIAGNOSTIC_(self%id_GS1Z1,GS1Z1)
-         !_SET_DIAGNOSTIC_(self%id_EXZ1, EXZ1)
-         !_SET_DIAGNOSTIC_(self%id_MTZ1, MTZ1)
-         !_SET_DIAGNOSTIC_(self%id_NPS2, NPS2)
-         !_SET_DIAGNOSTIC_(self%id_RPS2, RPS2)
-         !_SET_DIAGNOSTIC_(self%id_MTS2, MTS2)
-         !_SET_DIAGNOSTIC_(self%id_GS2Z2,GS2Z2)
-         !_SET_DIAGNOSTIC_(self%id_EXZ2, EXZ2)
-         !_SET_DIAGNOSTIC_(self%id_MTZ2, MTZ2)
-         !_SET_DIAGNOSTIC_(self%id_MIDN, MIDN)
-         !_SET_DIAGNOSTIC_(self%id_Nit,  Nit)
-         !_SET_DIAGNOSTIC_(self%id_GDNZ2,GDNZ2)
-         !_SET_DIAGNOSTIC_(self%id_GZ1Z2,GZ1Z2)
-         !_SET_DIAGNOSTIC_(self%id_GTZ2, GTZ2)
+         _SET_DIAGNOSTIC_(self%id_TN, S1+S2+Z1+Z2+NO3+NH4+DN)
+         _SET_DIAGNOSTIC_(self%id_NPS1, NPS1)
+         _SET_DIAGNOSTIC_(self%id_RPS1, RPS1)
+         _SET_DIAGNOSTIC_(self%id_MTS1, MTS1)
+         _SET_DIAGNOSTIC_(self%id_GS1Z1,GS1Z1)
+         _SET_DIAGNOSTIC_(self%id_EXZ1, EXZ1)
+         _SET_DIAGNOSTIC_(self%id_MTZ1, MTZ1)
+         _SET_DIAGNOSTIC_(self%id_NPS2, NPS2)
+         _SET_DIAGNOSTIC_(self%id_RPS2, RPS2)
+         _SET_DIAGNOSTIC_(self%id_MTS2, MTS2)
+         _SET_DIAGNOSTIC_(self%id_GS2Z2,GS2Z2)
+         _SET_DIAGNOSTIC_(self%id_EXZ2, EXZ2)
+         _SET_DIAGNOSTIC_(self%id_MTZ2, MTZ2)
+         _SET_DIAGNOSTIC_(self%id_MIDN, MIDN)
+         _SET_DIAGNOSTIC_(self%id_Nit,  Nit)
+         _SET_DIAGNOSTIC_(self%id_GDNZ2,GDNZ2)
+         _SET_DIAGNOSTIC_(self%id_GZ1Z2,GZ1Z2)
+         _SET_DIAGNOSTIC_(self%id_GTZ2, GTZ2)
 
       _LOOP_END_
    end subroutine do
@@ -635,7 +640,7 @@ contains
          _ADD_SURFACE_FLUX_(self%id_CO2,co2flx/secs_pr_day)
 
          !set diagnostic variable 
-         !_SET_SURFACE_DIAGNOSTIC_(self%id_stmp,co2flx)
+         _SET_SURFACE_DIAGNOSTIC_(self%id_stmp,co2flx)
 
       _SURFACE_LOOP_END_
    end subroutine do_surface
@@ -698,6 +703,7 @@ contains
          _ADD_BOTTOM_FLUX_(self%id_DOX, o2flx/secs_pr_day)
          _ADD_BOTTOM_FLUX_(self%id_CO2, co2flx/secs_pr_day)
         
+         _SET_BOTTOM_DIAGNOSTIC_(self%id_bTN,PS21+PS22+PDN1+PDN2)
       _BOTTOM_LOOP_END_
    end subroutine do_bottom
 
