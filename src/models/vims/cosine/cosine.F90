@@ -70,7 +70,7 @@ module vims_cosine
       real(rk) :: kpo4s2,kco2s2,ksio4s2,kns1,kns2,alpha1,alpha2,ak1,ak2,ak3,beta,gammas1,gammas2
       real(rk) :: beta1,beta2,kgz1,kgz2,rho1,rho2,rho3,gamma1,gamma2,gammaz,kex1,kex2,wss2,wsdn,wsdsi
       real(rk) :: si2n,p2n,o2no,o2nh,c2n,kox,kmdn1,kmdn2,kmdsi1,kmdsi2,gamman,TR,pco2a
-      real(rk) :: alpha_corr,zeptic,ndelay,rdelay,spm0
+      real(rk) :: alpha_corr,zeptic,ndelay,rdelay,spm0,fpar
       real(rk) :: fS21,fS22,fDN1,fDN2,fDSi,rkS21,rkS22,rkDN1,rkDN2,rkDSi,mkS21,mkS22,mkDN1,mkDN2,mkDSi
 
    contains
@@ -206,6 +206,7 @@ contains
       call self%get_parameter(self%ndelay,'ndelay','day','number of days that mesozooplankton grazing is delayed',default=15.0_rk)
       call self%get_parameter(self%rdelay,'rdelay','none','relavative contribution of concentration at ndelay_th day',default=0.3_rk)
 
+      call self%get_parameter(self%fpar,'fpar','none','par fraction of short-wave solar radiation',default=0.46_rk)
       call self%get_parameter(self%ispm,'ispm','none','flag for SPM specification',default=0)
       call self%get_parameter(self%spm0,'spm0','mg/L','constant for SPM concentration for ispm=0',default=10.0_rk)
 
