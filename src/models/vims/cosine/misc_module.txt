@@ -1,0 +1,3 @@
+module fabm_cosine_misc
+  use fabm_types,only : rk
+  integer,parameter :: rkind=8
