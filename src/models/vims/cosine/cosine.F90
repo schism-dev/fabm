@@ -65,7 +65,7 @@ module vims_cosine
       type (type_diagnostic_variable_id) :: id_MIDN,id_Nit,id_GDNZ2,id_GZ1Z2,id_GTZ2
 
       !model parameters
-      integer  :: idapt,ico2s,iz2graze,ispm
+      integer  :: idapt,ico2s,iz2graze,ispm,ipo4
       real(rk) :: dts,gmaxs1,gmaxs2,pis1,pis2,kno3s1,knh4s1,kpo4s1,kco2s1,kno3s2,knh4s2
       real(rk) :: kpo4s2,kco2s2,ksio4s2,kns1,kns2,alpha1,alpha2,ak1,ak2,ak3,beta,gammas1,gammas2
       real(rk) :: beta1,beta2,kgz1,kgz2,rho1,rho2,rho3,gamma1,gamma2,gammaz,kex1,kex2,wss2,wsdn,wsdsi
@@ -210,6 +210,8 @@ contains
       call self%get_parameter(self%ispm,'ispm','none','flag for SPM specification',default=0)
       call self%get_parameter(self%spm0,'spm0','mg/L','constant for SPM concentration for ispm=0',default=10.0_rk)
 
+      call self%get_parameter(self%ipo4,'ipo4','none','flag for additional PO4 from silicon dissolution',default=0)
+
       call self%get_parameter(self%fS21, 'fS21','none','S2 G1 fraction into sediment ',default=0.1_rk)
       call self%get_parameter(self%fS22, 'fS22','none','S2 G2 fraction into sediment ',default=0.1_rk)
       call self%get_parameter(self%fDN1, 'fDN1','none','DN G1 fraction into sediment ',default=0.15_rk)
@@ -245,25 +247,25 @@ contains
 
       call self%register_diagnostic_variable(self%id_stmp,  'stmp', 'none',         'temporary variables',    output=output_none)
       call self%register_diagnostic_variable(self%id_PPR,   'PPR',  'mmol m-3 d-1', 'primary production rate',output=output_none)
-      call self%register_diagnostic_variable(self%id_bTN,   'bTN',  'mmol m-2',     'bTN',  output=output_none)
-      call self%register_diagnostic_variable(self%id_TN,    'TN',   'mmol m-3',     'TN',   output=output_none)
-      call self%register_diagnostic_variable(self%id_NPS1,  'NPS1', 'mmol m-3 d-1', 'NPS1', output=output_none)
-      call self%register_diagnostic_variable(self%id_RPS1,  'RPS1', 'mmol m-3 d-1', 'RPS1', output=output_none)
-      call self%register_diagnostic_variable(self%id_MTS1,  'MTS1', 'mmol m-3 d-1', 'MTS1', output=output_none)
-      call self%register_diagnostic_variable(self%id_GS1Z1, 'GS1Z1','mmol m-3 d-1', 'GS1Z1',output=output_none)
-      call self%register_diagnostic_variable(self%id_EXZ1,  'EXZ1', 'mmol m-3 d-1', 'EXZ1', output=output_none)
-      call self%register_diagnostic_variable(self%id_MTZ1,  'MTZ1', 'mmol m-3 d-1', 'MTZ1', output=output_none)
-      call self%register_diagnostic_variable(self%id_NPS2,  'NPS2', 'mmol m-3 d-1', 'NPS2', output=output_none)
-      call self%register_diagnostic_variable(self%id_RPS2,  'RPS2', 'mmol m-3 d-1', 'RPS2', output=output_none)
-      call self%register_diagnostic_variable(self%id_MTS2,  'MTS2', 'mmol m-3 d-1', 'MTS2', output=output_none)
-      call self%register_diagnostic_variable(self%id_GS2Z2, 'GS2Z2','mmol m-3 d-1', 'GS2Z2',output=output_none)
-      call self%register_diagnostic_variable(self%id_EXZ2,  'EXZ2', 'mmol m-3 d-1', 'EXZ2', output=output_none)
-      call self%register_diagnostic_variable(self%id_MTZ2,  'MTZ2', 'mmol m-3 d-1', 'MTZ2', output=output_none)
-      call self%register_diagnostic_variable(self%id_MIDN,  'MIDN', 'mmol m-3 d-1', 'MIDN', output=output_none)
-      call self%register_diagnostic_variable(self%id_Nit,   'Nit',  'mmol m-3 d-1', 'Nit',  output=output_none)
-      call self%register_diagnostic_variable(self%id_GDNZ2, 'GDNZ2','mmol m-3 d-1', 'GDNZ2',output=output_none)
-      call self%register_diagnostic_variable(self%id_GZ1Z2, 'GZ1Z2','mmol m-3 d-1', 'GZ1Z2',output=output_none)
-      call self%register_diagnostic_variable(self%id_GTZ2,  'GTZ2', 'mmol m-3 d-1', 'GTZ2', output=output_none)
+      call self%register_diagnostic_variable(self%id_bTN,   'bTN',  'mmol m-2',     'bTN'  , output=output_none)
+      call self%register_diagnostic_variable(self%id_TN,    'TN',   'mmol m-3',     'TN'   , output=output_none)
+      call self%register_diagnostic_variable(self%id_NPS1,  'NPS1', 'mmol m-3 d-1', 'NPS1' , output=output_none)
+      call self%register_diagnostic_variable(self%id_RPS1,  'RPS1', 'mmol m-3 d-1', 'RPS1' , output=output_none)
+      call self%register_diagnostic_variable(self%id_MTS1,  'MTS1', 'mmol m-3 d-1', 'MTS1' , output=output_none)
+      call self%register_diagnostic_variable(self%id_GS1Z1, 'GS1Z1','mmol m-3 d-1', 'GS1Z1', output=output_none)
+      call self%register_diagnostic_variable(self%id_EXZ1,  'EXZ1', 'mmol m-3 d-1', 'EXZ1' , output=output_none)
+      call self%register_diagnostic_variable(self%id_MTZ1,  'MTZ1', 'mmol m-3 d-1', 'MTZ1' , output=output_none)
+      call self%register_diagnostic_variable(self%id_NPS2,  'NPS2', 'mmol m-3 d-1', 'NPS2' , output=output_none)
+      call self%register_diagnostic_variable(self%id_RPS2,  'RPS2', 'mmol m-3 d-1', 'RPS2' , output=output_none)
+      call self%register_diagnostic_variable(self%id_MTS2,  'MTS2', 'mmol m-3 d-1', 'MTS2' , output=output_none)
+      call self%register_diagnostic_variable(self%id_GS2Z2, 'GS2Z2','mmol m-3 d-1', 'GS2Z2', output=output_none)
+      call self%register_diagnostic_variable(self%id_EXZ2,  'EXZ2', 'mmol m-3 d-1', 'EXZ2' , output=output_none)
+      call self%register_diagnostic_variable(self%id_MTZ2,  'MTZ2', 'mmol m-3 d-1', 'MTZ2' , output=output_none)
+      call self%register_diagnostic_variable(self%id_MIDN,  'MIDN', 'mmol m-3 d-1', 'MIDN' , output=output_none)
+      call self%register_diagnostic_variable(self%id_Nit,   'Nit',  'mmol m-3 d-1', 'Nit'  , output=output_none)
+      call self%register_diagnostic_variable(self%id_GDNZ2, 'GDNZ2','mmol m-3 d-1', 'GDNZ2', output=output_none)
+      call self%register_diagnostic_variable(self%id_GZ1Z2, 'GZ1Z2','mmol m-3 d-1', 'GZ1Z2', output=output_none)
+      call self%register_diagnostic_variable(self%id_GTZ2,  'GTZ2', 'mmol m-3 d-1', 'GTZ2' , output=output_none)
 
       ! Register environmental dependencies
       call self%register_dependency(self%id_temp, standard_variables%temperature)
@@ -472,7 +474,7 @@ contains
 
          !PO4
          qcos(10)=(EXZ1+EXZ2+MIDN-NPS1-RPS1-NPS2-RPS2)*self%p2n
-         !qcos(10)=qcos(10)+MIDSi*self%p2n/self%si2n
+         if(self%ipo4==1) qcos(10)=qcos(10)+MIDSi*self%p2n/self%si2n
 
          !DOX       
          qcos(11)=(NPS1+NPS2)*self%o2no+(RPS1+RPS2-EXZ1-EXZ2-MIDN)*self%o2nh-2.0_rk*Nit
@@ -603,12 +605,17 @@ contains
       _DECLARE_ARGUMENTS_GET_VERTICAL_MOVEMENT_
 
       real(rk), parameter :: secs_pr_day = 86400.0_rk
-      real(rk) :: tmp
+      real(rk) :: dep,S2,rat,drat
    
       _LOOP_BEGIN_
-        _ADD_VERTICAL_VELOCITY_(self%id_S2,  -self%wss2/secs_pr_day)
-        _ADD_VERTICAL_VELOCITY_(self%id_DN,  -self%wsdn/secs_pr_day)
-        _ADD_VERTICAL_VELOCITY_(self%id_DSi, -self%wsdsi/secs_pr_day)
+        _GET_(self%id_dep,dep)     ! Layer height (m)
+        _GET_(self%id_S2,S2)       ! diatom conc. 
+
+        drat=dep/max(dep,0.1_rk); rat=1.0_rk
+        if(S2<=2.5_rk) rat=0.0_rk
+        _ADD_VERTICAL_VELOCITY_(self%id_S2,  -rat*drat*self%wss2/secs_pr_day)
+        _ADD_VERTICAL_VELOCITY_(self%id_DN,  -drat*self%wsdn/secs_pr_day)
+        _ADD_VERTICAL_VELOCITY_(self%id_DSi, -drat*self%wsdsi/secs_pr_day)
       _LOOP_END_
    end subroutine get_vertical_movement
 
@@ -618,10 +625,11 @@ contains
 
       !local variables
       real(rk), parameter :: secs_pr_day = 86400.0_rk
-      real(rk) :: temp,salt,DOX,CO2,SiO4,PO4,ALK,Uw
-      real(rk) :: rat,ph,o2flx,co2flx
+      real(rk) :: dep,temp,salt,DOX,CO2,SiO4,PO4,ALK,Uw
+      real(rk) :: rat,drat,ph,o2flx,co2flx
    
       _SURFACE_LOOP_BEGIN_
+         _GET_(self%id_dep, dep)
          _GET_(self%id_temp,temp)
          _GET_(self%id_salt,salt)
          _GET_(self%id_DOX, DOX)
@@ -631,17 +639,17 @@ contains
          _GET_(self%id_ALK, ALK)
          _GET_SURFACE_(self%id_Uw,Uw)
 
+         rat=1.e-6_rk; drat=dep/max(dep,0.1_rk)
          !for O2 air-sea exchange
          call o2flux(o2flx,temp,salt,DOX,Uw)
-         _ADD_SURFACE_FLUX_(self%id_DOX,o2flx/secs_pr_day)
+         _ADD_SURFACE_FLUX_(self%id_DOX,drat*o2flx/secs_pr_day)
 
          !for CO2 air-sea exchange
-         rat=1.e-6_rk
          call co2flux(2,ph,co2flx,temp,salt,CO2*rat,SiO4*rat,PO4*rat, ALK*rat,self%pco2a,Uw)
-         _ADD_SURFACE_FLUX_(self%id_CO2,co2flx/secs_pr_day)
+         _ADD_SURFACE_FLUX_(self%id_CO2,drat*co2flx/secs_pr_day)
 
          !set diagnostic variable 
-         _SET_SURFACE_DIAGNOSTIC_(self%id_stmp,co2flx)
+         _SET_SURFACE_DIAGNOSTIC_(self%id_stmp,drat*co2flx)
 
       _SURFACE_LOOP_END_
    end subroutine do_surface
@@ -651,12 +659,13 @@ contains
       class (type_vims_cosine),intent(in) :: self
       _DECLARE_ARGUMENTS_DO_BOTTOM_
       real(rk), parameter :: secs_pr_day = 86400.0_rk
-      real(rk) :: S2,DN,DSi
+      real(rk) :: S2,DN,DSi,dep,rat,drat
       real(rk) :: FS21,FS22,FDN1,FDN2,FDSi,JS21,JS22,JDN1,JDN2,JDSi  !depositional fluxes, and diagenesis fluxes
       real(rk) :: PS21,PS22,PDN1,PDN2,PDSi,RS21,RS22,RDN1,RDN2,RDSi  !sediment POM conc., and decay rate
       real(rk) :: nh4flx,sio4flx,po4flx,co2flx,o2flx                 !sediment nutrient fluxes
    
       _BOTTOM_LOOP_BEGIN_
+         _GET_(self%id_dep,dep)
          _GET_(self%id_S2, S2)
          _GET_(self%id_DN, DN)
          _GET_(self%id_DSi,DSi)
@@ -672,32 +681,47 @@ contains
          _GET_BOTTOM_(self%id_RDSi, RDSi)
 
          !depositional fluxes, and diagensis fluxes
-         FS21=self%wss2*S2*self%fS21;   JS21=RS21*PS21
-         FS22=self%wss2*S2*self%fS22;   JS22=RS22*PS22
-         FDN1=self%wsdn*DN*self%fDN1;   JDN1=RDN1*PDN1
-         FDN2=self%wsdn*DN*self%fDN2;   JDN2=RDN2*PDN2
-         FDSi=self%wsdsi*DSi*self%fDSi; JDSi=RDSi*PDSi
+         drat=dep/max(dep,0.1_rk); rat=1.0_rk
+         if(S2<=2.5_rk) rat=0.0_rk
+         FS21=rat*drat*self%wss2*S2*self%fS21;   JS21=RS21*PS21
+         FS22=rat*drat*self%wss2*S2*self%fS22;   JS22=RS22*PS22
+         FDN1=drat*self%wsdn*DN*self%fDN1;   JDN1=RDN1*PDN1
+         FDN2=drat*self%wsdn*DN*self%fDN2;   JDN2=RDN2*PDN2
+         FDSi=drat*self%wsdsi*DSi*self%fDSi; JDSi=RDSi*PDSi
 
          !sediment nutrient fluxes
          nh4flx=JS21+JS22+JDN1+JDN2
          sio4flx=self%si2n*(JS21+JS22)+JDSi
          po4flx =self%p2n*(JS21+JS22+JDN1+JDN2)
-         !po4flx =po4flx+self%p2n*JDSi/self%si2n
          co2flx=self%c2n*nh4flx; o2flx=-self%o2nh*nh4flx
+         if(self%ipo4==1) po4flx =po4flx+self%p2n*JDSi/self%si2n
       
+
          !reaction rates
+         if(RS21>0.0_rk .and. RS21<self.mkS21) then
+           _ADD_BOTTOM_SOURCE_(self%id_RS21,(self%rkS21-RS21*FS21/PS21)/secs_pr_day)
+         endif
+         if(RS22>0.0_rk .and. RS22<self.mkS22) then
+           _ADD_BOTTOM_SOURCE_(self%id_RS22,(self%rkS22-RS22*FS22/PS22)/secs_pr_day)
+         endif
+         if(RDN1>0.0_rk .and. RDN1<self.mkDN1) then
+           _ADD_BOTTOM_SOURCE_(self%id_RDN1,(self%rkDN1-RDN1*FDN1/PDN1)/secs_pr_day)
+         endif
+         if(RDN2>0.0_rk .and. RDN2<self.mkDN2) then
+           _ADD_BOTTOM_SOURCE_(self%id_RDN2,(self%rkDN2-RDN2*FDN2/PDN2)/secs_pr_day)
+         endif
+         if(RDSi>0.0_rk .and. RDSi<self.mkDSi) then
+           _ADD_BOTTOM_SOURCE_(self%id_RDSi,(self%rkDSi-RDSi*FDSi/PDSi)/secs_pr_day)
+         endif
+
+         !sed conc.
          _ADD_BOTTOM_SOURCE_(self%id_PS21,(FS21-JS21)/secs_pr_day)
          _ADD_BOTTOM_SOURCE_(self%id_PS22,(FS22-JS22)/secs_pr_day)
          _ADD_BOTTOM_SOURCE_(self%id_PDN1,(FDN1-JDN1)/secs_pr_day)
          _ADD_BOTTOM_SOURCE_(self%id_PDN2,(FDN2-JDN2)/secs_pr_day)
          _ADD_BOTTOM_SOURCE_(self%id_PDSi,(FDSi-JDSi)/secs_pr_day)
 
-         _ADD_BOTTOM_SOURCE_(self%id_RS21,(self%rkS21-RS21*FS21/PS21)/secs_pr_day)
-         _ADD_BOTTOM_SOURCE_(self%id_RS22,(self%rkS22-RS22*FS22/PS22)/secs_pr_day)
-         _ADD_BOTTOM_SOURCE_(self%id_RDN1,(self%rkDN1-RDN1*FDN1/PDN1)/secs_pr_day)
-         _ADD_BOTTOM_SOURCE_(self%id_RDN2,(self%rkDN2-RDN2*FDN2/PDN2)/secs_pr_day)
-         _ADD_BOTTOM_SOURCE_(self%id_RDSi,(self%rkDSi-RDSi*FDSi/PDSi)/secs_pr_day)
-
+         !sed flux
          _ADD_BOTTOM_FLUX_(self%id_SiO4,sio4flx/secs_pr_day)
          _ADD_BOTTOM_FLUX_(self%id_NH4, nh4flx/secs_pr_day)
          _ADD_BOTTOM_FLUX_(self%id_PO4, po4flx/secs_pr_day)
