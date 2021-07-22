@@ -116,11 +116,11 @@ contains
       call self%register_state_variable(self%id_PDN2, 'PDN2', 'mmol m-2','Sediment DN Conc. G2', 1.e1_rk, minimum=0.0_rk)
       call self%register_state_variable(self%id_PDSi, 'PDSi', 'mmol m-2','Sediment DSi Conc.',   1.e1_rk, minimum=0.0_rk)
 
-      call self%register_state_variable(self%id_RS21, 'RS21', 'day-1','Sediment S2 decay rate',  0.1_rk,  minimum=0.0_rk,maximum=0.1_rk)
-      call self%register_state_variable(self%id_RS22, 'RS22', 'day-1','Sediment S2 decay rate',  0.01_rk, minimum=0.0_rk,maximum=0.01_rk)
-      call self%register_state_variable(self%id_RDN1, 'RDN1', 'day-1','Sediment DN decay rate',  0.1_rk,  minimum=0.0_rk,maximum=0.1_rk)
-      call self%register_state_variable(self%id_RDN2, 'RDN2', 'day-1','Sediment DN decay rate',  0.01_rk, minimum=0.0_rk,maximum=0.01_rk)
-      call self%register_state_variable(self%id_RDSi, 'RDSi', 'day-1','Sediment DSi decay rate', 0.1_rk,  minimum=0.0_rk,maximum=0.1_rk)
+      call self%register_state_variable(self%id_RS21, 'RS21', 'day-1','Sediment S2 decay rate',  0.1_rk,  minimum=0.0_rk,maximum=1.0_rk)
+      call self%register_state_variable(self%id_RS22, 'RS22', 'day-1','Sediment S2 decay rate',  0.01_rk, minimum=0.0_rk,maximum=1.0_rk)
+      call self%register_state_variable(self%id_RDN1, 'RDN1', 'day-1','Sediment DN decay rate',  0.1_rk,  minimum=0.0_rk,maximum=1.0_rk)
+      call self%register_state_variable(self%id_RDN2, 'RDN2', 'day-1','Sediment DN decay rate',  0.01_rk, minimum=0.0_rk,maximum=1.0_rk)
+      call self%register_state_variable(self%id_RDSi, 'RDSi', 'day-1','Sediment DSi decay rate', 0.1_rk,  minimum=0.0_rk,maximum=1.0_rk)
 
       !--------------------------------------------------------
       !Note: parameter values in our own derived type
@@ -658,7 +658,7 @@ contains
       !reflective sediment flux model with accumulative POM and variable decay rate
       class (type_vims_cosine),intent(in) :: self
       _DECLARE_ARGUMENTS_DO_BOTTOM_
-      real(rk), parameter :: secs_pr_day = 86400.0_rk
+      real(rk), parameter :: secs_pr_day = 86400.0_rk, mval=1e-10_rk
       real(rk) :: S2,DN,DSi,dep,rat,drat
       real(rk) :: FS21,FS22,FDN1,FDN2,FDSi,JS21,JS22,JDN1,JDN2,JDSi  !depositional fluxes, and diagenesis fluxes
       real(rk) :: PS21,PS22,PDN1,PDN2,PDSi,RS21,RS22,RDN1,RDN2,RDSi  !sediment POM conc., and decay rate
@@ -698,20 +698,20 @@ contains
       
 
          !reaction rates
-         if(RS21>0.0_rk .and. RS21<self.mkS21) then
-           _ADD_BOTTOM_SOURCE_(self%id_RS21,(self%rkS21-RS21*FS21/PS21)/secs_pr_day)
+         if(RS21<self.mkS21) then
+           _ADD_BOTTOM_SOURCE_(self%id_RS21,(self%rkS21-RS21*FS21/max(mval,PS21))/secs_pr_day)
          endif
-         if(RS22>0.0_rk .and. RS22<self.mkS22) then
-           _ADD_BOTTOM_SOURCE_(self%id_RS22,(self%rkS22-RS22*FS22/PS22)/secs_pr_day)
+         if(RS22<self.mkS22) then
+           _ADD_BOTTOM_SOURCE_(self%id_RS22,(self%rkS22-RS22*FS22/max(mval,PS22))/secs_pr_day)
          endif
-         if(RDN1>0.0_rk .and. RDN1<self.mkDN1) then
-           _ADD_BOTTOM_SOURCE_(self%id_RDN1,(self%rkDN1-RDN1*FDN1/PDN1)/secs_pr_day)
+         if(RDN1<self.mkDN1) then
+           _ADD_BOTTOM_SOURCE_(self%id_RDN1,(self%rkDN1-RDN1*FDN1/max(mval,PDN1))/secs_pr_day)
          endif
-         if(RDN2>0.0_rk .and. RDN2<self.mkDN2) then
-           _ADD_BOTTOM_SOURCE_(self%id_RDN2,(self%rkDN2-RDN2*FDN2/PDN2)/secs_pr_day)
+         if(RDN2<self.mkDN2) then
+           _ADD_BOTTOM_SOURCE_(self%id_RDN2,(self%rkDN2-RDN2*FDN2/max(mval,PDN2))/secs_pr_day)
          endif
-         if(RDSi>0.0_rk .and. RDSi<self.mkDSi) then
-           _ADD_BOTTOM_SOURCE_(self%id_RDSi,(self%rkDSi-RDSi*FDSi/PDSi)/secs_pr_day)
+         if(RDSi<self.mkDSi) then
+           _ADD_BOTTOM_SOURCE_(self%id_RDSi,(self%rkDSi-RDSi*FDSi/max(mval,PDSi))/secs_pr_day)
          endif
 
          !sed conc.
