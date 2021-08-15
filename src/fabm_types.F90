@@ -943,7 +943,7 @@ contains
       class (type_base_model), target, intent(inout) :: self, model
       character(len=*),                intent(in)    :: name
       character(len=*), optional,      intent(in)    :: long_name
-      integer,                         intent(in)    :: configunit
+      integer, optional,               intent(in)    :: configunit
 
       integer                              :: islash
       class (type_base_model),     pointer :: parent
@@ -1006,7 +1006,7 @@ contains
       call self%parameters%add_child(model%parameters, trim(model%name))
       call self%couplings%add_child(model%couplings, trim(model%name))
       call self%children%append(model)
-      call model%initialize(configunit)
+      call model%initialize(-1)
       model%rdt__ = 1._rk / model%dt
 
       if (model%implements(source_get_light_extinction)) then
@@ -1422,7 +1422,7 @@ contains
       end if
 
       link => self%links%find(slave)
-      if (.not.associated(link)) call self%fatal_error('request_coupling_for_name', &
+      if (.not. associated(link)) call self%fatal_error('request_coupling_for_name', &
          'Specified slave (' // trim(slave) // ') not found. Make sure the variable is registered before calling request_coupling.')
       call request_coupling_for_link(self, link, master)
    end subroutine request_coupling_for_name
@@ -2047,7 +2047,8 @@ contains
       class (type_base_model),                       intent(inout), target :: self
       type (type_horizontal_diagnostic_variable_id), intent(inout), target :: id
       character(len=*),                              intent(in)            :: name, units, long_name
-      integer,                                       intent(in), optional  :: output, source, domain
+      integer,                                       intent(in)            :: source
+      integer,                                       intent(in), optional  :: output, domain
       real(rk),                                      intent(in), optional  :: missing_value
       class (type_base_standard_variable),           intent(in), optional  :: standard_variable
       logical,                                       intent(in), optional  :: act_as_state_variable
@@ -2749,7 +2750,7 @@ contains
    function find_model(self, name, recursive) result(found_model)
       class (type_base_model), target, intent(in) :: self
       character(len=*),                intent(in) :: name
-      logical,optional,                intent(in) :: recursive
+      logical, optional,               intent(in) :: recursive
       class (type_base_model), pointer            :: found_model
 
       class (type_base_model), pointer     :: current_root
@@ -2761,7 +2762,8 @@ contains
 
       ! Determine whether to also try among ancestors
       recursive_eff = .false.
-      if (present(recursive)) recursive_eff = recursive
+      if (present(recursive)) recursive_eff = recursive .and. .not. (name == '.' .or. name == '..' &
+            .or. name(:min(2, len(name))) == './' .or. name(:min(3, len(name))) == '../')
 
       current_root => self
       do while (associated(current_root))
@@ -2771,9 +2773,9 @@ contains
          do while (associated(found_model) .and. istart <= len(name))
             length = index(name(istart:), '/') - 1
             if (length == -1) length = len(name) - istart + 1
-            if (length == 2 .and. name(istart:istart + 1) == '..') then
+            if (length == 2 .and. name(istart:istart + length - 1) == '..') then
                found_model => found_model%parent
-            elseif (.not. (length == 1 .and. name(istart:istart) == '.')) then
+            elseif (.not. (length == 1 .and. name(istart:istart + length - 1) == '.')) then
                node => found_model%children%find(name(istart:istart + length - 1))
                found_model => null()
                if (associated(node)) found_model => node%model
