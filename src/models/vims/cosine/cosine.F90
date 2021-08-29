@@ -698,19 +698,19 @@ contains
       
 
          !reaction rates
-         if(RS21<self.mkS21) then
+         if(RS21<self%mkS21) then
            _ADD_BOTTOM_SOURCE_(self%id_RS21,(self%rkS21-RS21*FS21/max(mval,PS21))/secs_pr_day)
          endif
-         if(RS22<self.mkS22) then
+         if(RS22<self%mkS22) then
            _ADD_BOTTOM_SOURCE_(self%id_RS22,(self%rkS22-RS22*FS22/max(mval,PS22))/secs_pr_day)
          endif
-         if(RDN1<self.mkDN1) then
+         if(RDN1<self%mkDN1) then
            _ADD_BOTTOM_SOURCE_(self%id_RDN1,(self%rkDN1-RDN1*FDN1/max(mval,PDN1))/secs_pr_day)
          endif
-         if(RDN2<self.mkDN2) then
+         if(RDN2<self%mkDN2) then
            _ADD_BOTTOM_SOURCE_(self%id_RDN2,(self%rkDN2-RDN2*FDN2/max(mval,PDN2))/secs_pr_day)
          endif
-         if(RDSi<self.mkDSi) then
+         if(RDSi<self%mkDSi) then
            _ADD_BOTTOM_SOURCE_(self%id_RDSi,(self%rkDSi-RDSi*FDSi/max(mval,PDSi))/secs_pr_day)
          endif
 
