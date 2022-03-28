@@ -10,4 +10,7 @@
 #define _FABM_VERTICAL_BOTTOM_TO_SURFACE_
 #define _FABM_BOTTOM_INDEX_ -1
 
+#define _FABM_MASK_TYPE_ integer
+#define _FABM_MASKED_VALUE_ 1
+
 #include "fabm.h"
