@@ -9,7 +9,7 @@
 !
 ! Original author(s): Fei Chai (U Maine)
 !
-! @author  => add authors
+! @author  => Zhengui WANG 
 ! @copyright  => add VIMS etc ...
 ! @license => speak to Fei Chai, or is there a license for Cosine already?
 

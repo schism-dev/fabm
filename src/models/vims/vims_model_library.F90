@@ -18,6 +18,7 @@ contains
    subroutine create(self, name, model)
 
       use vims_cosine ! Needs to be done for each vims model
+      use vims_icm  
 
       class (type_factory), intent(in) :: self
       character(*),         intent(in) :: name
@@ -25,6 +26,7 @@ contains
 
       select case (name)
          case ('cosine');   allocate(type_vims_cosine::model) ! Also add new models here
+         case ('icm');      allocate(type_vims_icm::model) ! Also add new models here
       end select
 
    end subroutine

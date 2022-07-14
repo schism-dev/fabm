@@ -1,0 +1,3 @@
+module fabm_icm_misc
+  use fabm_types,only : rk
+  integer,parameter :: rkind=8

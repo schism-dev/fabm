@@ -1,0 +1,164 @@
+instances: 
+  icm: 
+    model: vims/icm
+    parameters: 
+       #Core modules
+       iKe     : 0      #iKe=0: Ke=Ke0+KeC*Chl+KeS*(tss2c*POC); iKe=1: Ke=Ke0+KeC*Chl+KeS*TSS (from SED3D)  
+       Ke0     : 0.26   #backgroud light extinction coefficient (1/m)
+       KeC     : 0.017  #Light attenu. due to chlorophyll
+       KeS     : 0.07   #Light attenu. due to TSS
+       tss2c   : 6.0    #TSS to carbon ratio
+       alpha_1 : 10.0   #init. slope of P-I curve for PB1
+       alpha_2 : 10.0   #init. slope of P-I curve for PB2
+       alpha_3 : 3.15   #init. slope of P-I curve for PB3
+       GPM_1   : 3.5    #PB1 growth rates (day-1)
+       GPM_2   : 3.0    #PB2 growth rates (day-1)
+       GPM_3   : 2.5    #PB3 growth rates (day-1)
+       TGP_1   : 15.0   #optimal temp. for PB1 growth (oC)
+       TGP_2   : 22.0   #optimal temp. for PB2 growth (oC)
+       TGP_3   : 27.0   #optimal temp. for PB3 growth (oC)
+       KTGP_11 : 0.004  #temp. dependence for PB1 growth when T<TGP_1 (oC-2)
+       KTGP_21 : 0.008  #temp. dependence for PB1 growth when T>TGP_1 (oC-2)
+       KTGP_31 : 0.005  #temp. dependence for PB2 growth when T<TGP_2 (oC-2)
+       KTGP_12 : 0.006  #temp. dependence for PB2 growth when T>TGP_2 (oC-2)
+       KTGP_22 : 0.010  #temp. dependence for PB3 growth when T<TGP_3 (oC-2)
+       KTGP_32 : 0.004  #temp. dependence for PB3 growth when T>TGP_3 (oC-2)
+       PRR_1   : 0.150  #predation rate by higher trophic level on PB1 (day-1)
+       PRR_2   : 0.20   #predation rate by higher trophic level on PB2 (day-1)
+       PRR_3   : 0.001  #predation rate by higher trophic level on PB3 (day-1)
+       MTB_1   : 0.01   #PB1 metabolism rates (day-1)
+       MTB_2   : 0.01   #PB2 metabolism rates (day-1)
+       MTB_3   : 0.04   #PB3 metabolism rates (day-1)
+       TMT_1   : 20.0   #reference temp. for PB1 metabolism (oC)  
+       TMT_2   : 20.0   #reference temp. for PB2 metabolism (oC)  
+       TMT_3   : 20.0   #reference temp. for PB3 metabolism (oC)  
+       KTMT_1  : 0.0322 #temp. dependence for PB1 metabolism (oC-1)
+       KTMT_2  : 0.0322 #temp. dependence for PB2 metabolism (oC-1)
+       KTMT_3  : 0.0322 #temp. dependence for PB3 metabolism (oC-1)
+       WSPBS_1 : 0.15   #settling velocity of PB1 (m.day-1)
+       WSPBS_2 : 0.05   #settling velocity of PB2 (m.day-1)
+       WSPBS_3 : 0.00   #settling velocity of PB3 (m.day-1)
+       WSPOM_1 : 0.30   #settling velocity of RPOM (m.day-1)
+       WSPOM_2 : 0.30   #settling velocity of LPOM (m.day-1)
+       WSSED   : 0.10   #settling velocity of TSS (m.day-1)
+       FCP_11  : 0.35   #fractions of PB1 carbon into RPOC
+       FCP_21  : 0.30   #fractions of PB2 carbon into RPOC
+       FCP_31  : 0.20   #fractions of PB3 carbon into RPOC
+       FCP_12  : 0.55   #fractions of PB1 carbon into LPOC
+       FCP_22  : 0.50   #fractions of PB2 carbon into LPOC
+       FCP_32  : 0.50   #fractions of PB3 carbon into LPOC
+       FCP_13  : 0.10   #fractions of PB1 carbon into DOC)
+       FCP_23  : 0.20   #fractions of PB2 carbon into DOC)
+       FCP_33  : 0.30   #fractions of PB3 carbon into DOC)
+       FNP_1   : 0.35   #fractions of PB nitrogen into RPON
+       FNP_2   : 0.50   #fractions of PB nitrogen into LPON
+       FNP_3   : 0.10   #fractions of PB nitrogen into DON 
+       FNP_4   : 0.05   #fractions of PB nitrogen into NH4 
+       FPP_1   : 0.10   #fractions of PB Phosphorus into RPOP
+       FPP_2   : 0.20   #fractions of PB Phosphorus into LPOP
+       FPP_3   : 0.50   #fractions of PB Phosphorus into DOP 
+       FPP_4   : 0.20   #fractions of PB Phosphorus into PO4 
+       FCM_1   : 0.10   #fractions of PB1 metabolism carbon into DOC
+       FCM_2   : 0.10   #fractions of PB2 metabolism carbon into DOC
+       FCM_3   : 0.10   #fractions of PB3 metabolism carbon into DOC
+       FNM_11  : 0.0    #fractions of PB1 metabolism N. into RPON
+       FNM_21  : 0.0    #fractions of PB2 metabolism N. into RPON
+       FNM_31  : 0.0    #fractions of PB3 metabolism N. into RPON
+       FNM_12  : 0.0    #fractions of PB1 metabolism N. into LPON
+       FNM_22  : 0.0    #fractions of PB2 metabolism N. into LPON
+       FNM_32  : 0.0    #fractions of PB3 metabolism N. into LPON
+       FNM_13  : 1.0    #fractions of PB1 metabolism N. into DON 
+       FNM_23  : 1.0    #fractions of PB2 metabolism N. into DON 
+       FNM_33  : 1.0    #fractions of PB3 metabolism N. into DON
+       FNM_14  : 0.0    #fractions of PB1 metabolism N. into NH4
+       FNM_24  : 0.0    #fractions of PB2 metabolism N. into NH4 
+       FNM_34  : 0.0    #fractions of PB3 metabolism N. into NH4 
+       FPM_11  : 0.0    #fractions of PB1 metabolism P. into RPOP
+       FPM_21  : 0.0    #fractions of PB2 metabolism P. into RPOP
+       FPM_31  : 0.0    #fractions of PB3 metabolism P. into RPOP
+       FPM_12  : 0.0    #fractions of PB1 metabolism P. into LPOP
+       FPM_22  : 0.0    #fractions of PB2 metabolism P. into LPOP
+       FPM_32  : 0.0    #fractions of PB3 metabolism P. into LPOP
+       FPM_13  : 1.0    #fractions of PB1 metabolism P. into DOP
+       FPM_23  : 1.0    #fractions of PB2 metabolism P. into DOP
+       FPM_33  : 1.0    #fractions of PB3 metabolism P. into DOP
+       FPM_14  : 0.0    #fractions of PB1 metabolism P. into PO4 
+       FPM_24  : 0.0    #fractions of PB2 metabolism P. into PO4 
+       FPM_34  : 0.0    #fractions of PB3 metabolism P. into PO4 
+       Nit     : 0.07   #maximum nitrification rate (day-1)
+       TNit    : 27.0   #optimal temp. for nitrification (oC)
+       KTNit_1 : 0.0045 #temp. dependence (T<=TNit) for nitrification (oC-2)
+       KTNit_2 : 0.0045 #temp. dependence (T>TNit) for nitrification (oC-2)
+       KhDOn   : 1.0    #DO half saturation for nitrification (mg/L)
+       KhNH4n  : 1.0    #NH4 half saturation for nitrification (mg/L)
+       KhDOox  : 0.5    #DO half saturation for dentrification & DOC's oxic respiration (mg/L)
+       KhNO3dn : 0.1    #NO3 half saturation for denitrification (mg/L)
+       KC0_1   : 0.005  #minimum decay rate of RPOC (day-1)
+       KC0_2   : 0.075  #minimum decay rate of LPOC (day-1)
+       KC0_3   : 0.20   #minimum decay rate of DOC  (day-1)
+       KN0_1   : 0.005  #minimum decay rate of RPON (day-1)
+       KN0_2   : 0.075  #minimum decay rate of LPON (day-1)
+       KN0_3   : 0.015  #minimum decay rate of DON  (day-1)
+       KP0_1   : 0.005  #minimum decay rate of RPOP (day-1)
+       KP0_2   : 0.075  #minimum decay rate of LPOP (day-1)
+       KP0_3   : 0.010  #minimum decay rate of DOP  (day-1)
+       KCalg_1 : 0.0    #algae effect on RPOC decay (day-1.m3.g[C]-1)
+       KCalg_2 : 0.0    #algae effect on LPOC decay (day-1.m3.g[C]-1)
+       KCalg_3 : 0.0    #algae effect on DOC  decay (day-1.m3.g[C]-1)
+       KNalg_1 : 0.0    #algae effect on RPON decay (day-1.m3.g[C]-1)
+       KNalg_2 : 0.0    #algae effect on LPON decay (day-1.m3.g[C]-1)
+       KNalg_3 : 0.0    #algae effect on DON  decay (day-1.m3.g[C]-1)
+       KPalg_1 : 0.0    #algae effect on RPOP decay (day-1.m3.g[C]-1)
+       KPalg_2 : 0.0    #algae effect on LPOP decay (day-1.m3.g[C]-1)
+       KPalg_3 : 0.0    #algae effect on DOP  decay (day-1.m3.g[C]-1)
+       TRM_1   : 20.0   #reference temp. for RPOM decay (oC)
+       TRM_2   : 20.0   #reference temp. for LPOM decay (oC)
+       TRM_3   : 20.0   #reference temp. for DOM  decay (oC)
+       KTRM_1  : 0.069  #temp. dependence for RPOM decay (oC-1)
+       KTRM_2  : 0.069  #temp. dependence for LPOM decay (oC-1)
+       KTRM_3  : 0.069  #temp. dependence for DOM  decay (oC-1)
+       KCD     : 1.0    #oxidation rate of COD at TRCOD (day-1)
+       TRCOD   : 20.0   #reference temp. for COD oxidation (oC)
+       KTRCOD  : 0.041  #temp. dependence for COD oxidation (oC-1)
+       KhCOD   : 1.5    #COD half saturation for COD oxidation (mg[O2]/L)
+       KhN_1   : 0.01   #nitrogen half saturation for PB1 (mg/L)
+       KhN_2   : 0.01   #nitrogen half saturation for PB2 (mg/L)
+       KhN_3   : 0.01   #nitrogen half saturation for PB3 (mg/L)
+       KhP_1   : 0.001  #phosphorus half saturation for PB1 (mg/L)
+       KhP_2   : 0.001  #phosphorus half saturation for PB2 (mg/L)
+       KhP_3   : 0.001  #phosphorus half saturation for PB3 (mg/L)
+       KhSal_1 : 1e6    #salinity when PB1 growth is halved (PSU); (1e6: no salinity stress)
+       KhSal_2 : 1e6    #salinity when PB2 growth is halved (PSU); (1e6: no salinity stress)
+       KhSal_3 : 0.1    #salinity when PB3 growth is halved (PSU); (1e6: no salinity stress)
+       c2chl_1 : 0.059  #carbon to chlorophyll ratio for PB1 (g[C]/mg[Chl])
+       c2chl_2 : 0.059  #carbon to chlorophyll ratio for PB2 (g[C]/mg[Chl])
+       c2chl_3 : 0.059  #carbon to chlorophyll ratio for PB3 (g[C]/mg[Chl])
+       n2c_1   : 0.167  #nitrogen to carbon ratio for PB1 
+       n2c_2   : 0.167  #nitrogen to carbon ratio for PB2
+       n2c_3   : 0.167  #nitrogen to carbon ratio for PB3
+       p2c_1   : 0.02   #phosphorus to carbon ratio for PB1 
+       p2c_2   : 0.02   #phosphorus to carbon ratio for PB2
+       p2c_3   : 0.02   #phosphorus to carbon ratio for PB3
+       o2c     : 2.67   #oxygen to carbon ratio in respiration
+       o2n     : 4.33   #oxygen to ammonium ratio (g[O2]/g[NH4])
+       dn2c    : 0.933  #mass of NO3 consumed per mass of DOC oxidized in denit. (g[N]/g[C])
+       an2c    : 0.5    #ratio of denit. rate to oxic DOC respiration rate
+       KhDO_1  : 0.5    #DO half saturation for PB1 DOC excretion (mg/L)
+       KhDO_2  : 0.5    #DO half saturation for PB2 DOC excretion (mg/L)
+       KhDO_3  : 0.5    #DO half saturation for PB3 DOC excretion (mg/L)
+       KPO4p   : 0.0    #coefficient relating PO4 sorption to TSS
+       WRea    : 0.0    #baseline wind-induced reaeration coefficient for DO (day-1)
+       PBmin_1 : 0.0    #minimum PB1 concentration (mg[C]/L)
+       PBmin_2 : 0.0    #minimum PB2 concentration (mg[C]/L)
+       PBmin_3 : 0.0    #minimum PB3 concentration (mg[C]/L)
+       #sediment module
+       bKC     : 0.05   #decay rate of sediment POC (day-1) 
+       bKN     : 0.05   #decay rate of sediment PON (day-1) 
+       bKP     : 0.05   #decay rate of sediment POP (day-1) 
+       bKTC    : 0.005  #temp. dependence of sediment POC decay rate (oC-1) 
+       bKTN    : 0.005  #temp. dependence of sediment PON decay rate (oC-1) 
+       bKTP    : 0.005  #temp. dependence of sediment POP decay rate (oC-1) 
+    initialization: 
+       bPOC    : 0.0
+       bPON    : 0.0
+       bPOP    : 0.0
