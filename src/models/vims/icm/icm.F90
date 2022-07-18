@@ -34,7 +34,7 @@ module vims_icm
   use fabm_icm_misc
   implicit none
   private
- 
+
   type,extends(type_base_model),public :: type_vims_icm 
     !variable identifier
     type(type_state_variable_id) :: id_PB1, id_PB2,  id_PB3,  id_RPOC, id_LPOC
@@ -46,6 +46,8 @@ module vims_icm
     !dependence 
     type(type_dependency_id) :: id_temp,id_salt,id_dz,id_zr,id_PAR !,id_Ke !,id_PAR,id_TSS
     type(type_surface_dependency_id) :: id_Light0,id_wspd
+    type(type_global_dependency_id) :: id_dt
+    !type(type_horizontal_dependency_id) :: id_GPM_1
 
     !diagnostic
     type(type_diagnostic_variable_id) :: id_dPAR
@@ -226,6 +228,8 @@ contains
     call self%register_dependency(self%id_PAR,   standard_variables%downwelling_photosynthetic_radiative_flux) 
     call self%register_dependency(self%id_Light0,standard_variables%surface_downwelling_shortwave_flux)
     call self%register_dependency(self%id_wspd,  standard_variables%wind_speed)
+    call self%register_dependency(self%id_dt,    type_global_standard_variable(name='time_step_of_host_model',units='second'))
+    !call self%register_dependency(self%id_GPM_1, type_horizontal_standard_variable(name='GPM_1',units='day-1'))
 
   end subroutine initialize
 
@@ -241,7 +245,7 @@ contains
     integer :: i,m
     real(rk) :: PBS(3),RPOC,LPOC,DOC,RPON,LPON,DON,NH4,NO3,RPOP,LPOP,DOP,PO4,COD,DOX
     real(rk) :: temp,salt,zr,dz,PAR,TSS,DIN,PO4d,PO4p,rIK,fT,fN,fP,fST,fR,rKTM
-    real(rk) :: dwqc(ntrs),rat,xT,APB,mKhN,mKhP,rKHR,rKCOD,rDenit,rNit
+    real(rk) :: dwqc(ntrs),rat,dt,xT,APB,mKhN,mKhP,rKHR,rKCOD,rDenit,rNit !,GPM_1
     real(rk),dimension(3) :: GP,MT,PR,rKC,rKN,rKP,fPN
 
     ! Enter spatial loops (if any)
@@ -273,6 +277,8 @@ contains
       _GET_(self%id_zr,  zr)
       _GET_(self%id_dz,  dz)
       _GET_(self%id_PAR, PAR)
+      _GET_GLOBAL_(self%id_dt,  dt)
+      !_GET_HORIZONTAL_(self%id_GPM_1,GPM_1)
 
       !pre-computation
       if(self%iKe==0) TSS=self%tss2c*(RPOC+LPOC) 
