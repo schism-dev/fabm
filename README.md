@@ -1,3 +1,12 @@
+| :warning: WARNING          |
+|:---------------------------|
+| This repository is currently being split, such that only the institutional parts (hereon and vims) will survive and the FABM infrastructure is synchronized with the official FABM repo |
+
+This refactoring will reduce maintenance load.  The three resulting splits will be
+1. A copy of the FABM framework regularly synchronized with upstream FABM official, to be uses only for pull requests moving upstream on the FABM infrastructure
+2. The VIMS FABM institute repository https://github.com/schism-dev/fabm-vims containing the development of the CoSINE and ICM models, led Zhengui Wang
+3. A copy of the Hereon FABM institute repository  https://github.com/schism-dev/fabm-vims containing the development of the augmented gotm-light, MAECS, TAME and OmexDia models.
+
 ## The Framework for Aquatic Biogeochemical Models (FABM)
 
 FABM is a Fortran 2003 programming framework for biogeochemical models of marine and freshwater systems.
